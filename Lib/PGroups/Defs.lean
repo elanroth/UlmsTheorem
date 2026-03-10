@@ -153,9 +153,10 @@ end ReducedLemmas
 
 /-! ### p-height -/
 
-/-- The p-height of x: sup { n : ℕ | ∃ y, p^n•y = x }, with ⊤ if infinitely divisible. -/
+/-- The p-height of x: ⊤ if x = 0, otherwise sup { n : ℕ | ∃ y, p^n•y = x }. -/
 noncomputable def pHeight {G : Type*} [AddCommGroup G] (x : G) : ℕ∞ :=
-  sSup (WithTop.some '' {n : ℕ | ∃ y : G, p ^ n • y = x})
+  letI : Decidable (x = 0) := Classical.propDecidable _
+  if x = 0 then ⊤ else sSup (WithTop.some '' {n : ℕ | ∃ y : G, p ^ n • y = x})
 
 section HeightLemmas
 
@@ -163,23 +164,31 @@ set_option linter.unusedSectionVars false
 
 variable {G : Type*} [AddCommGroup G]
 
+/-- 0 has height ⊤. -/
+@[simp] lemma pHeight_zero : pHeight p (0 : G) = ⊤ := by
+  simp only [pHeight, if_true]
+
 /-- x has height ≥ n iff x ∈ p^n·G. -/
 lemma pHeight_ge_iff (x : G) (n : ℕ) :
     (n : ℕ∞) ≤ pHeight p x ↔ ∃ y : G, p ^ n • y = x := by
-  constructor
-  · intro h
-    contrapose! h
-    refine' lt_of_le_of_lt (csSup_le _ _) _
-    exact ↑(n - 1)
-    · exact ⟨_, ⟨0, ⟨x, by simp +decide⟩, rfl⟩⟩
-    · rintro _ ⟨m, ⟨y, hy⟩, rfl⟩
-      exact WithTop.coe_le_coe.mpr (Nat.le_sub_one_of_lt (lt_of_not_ge fun hnm =>
-        h (p ^ (m - n) • y) <| by rw [← MulAction.mul_smul, ← pow_add, Nat.add_sub_of_le hnm, hy]))
-    · rcases n with (_ | n) <;> simp_all +decide
-      exact WithTop.coe_lt_coe.mpr (Nat.lt_succ_self _)
-  · intro ⟨y, hy⟩
-    apply le_sSup
-    exact ⟨n, ⟨y, hy⟩, rfl⟩
+  by_cases hx : x = 0
+  · subst hx
+    simp only [pHeight_zero, le_top, true_iff]; exact ⟨0, smul_zero _⟩
+  · simp only [pHeight, if_neg hx]
+    constructor
+    · intro h
+      contrapose! h
+      refine' lt_of_le_of_lt (csSup_le _ _) _
+      exact ↑(n - 1)
+      · exact ⟨_, ⟨0, ⟨x, by simp +decide⟩, rfl⟩⟩
+      · rintro _ ⟨m, ⟨y, hy⟩, rfl⟩
+        exact WithTop.coe_le_coe.mpr (Nat.le_sub_one_of_lt (lt_of_not_ge fun hnm =>
+          h (p ^ (m - n) • y) <| by rw [← mul_smul, ← pow_add, Nat.add_sub_of_le hnm, hy]))
+      · rcases n with (_ | n) <;> simp_all +decide
+        exact WithTop.coe_lt_coe.mpr (Nat.lt_succ_self _)
+    · intro ⟨y, hy⟩
+      apply le_sSup
+      exact ⟨n, ⟨y, hy⟩, rfl⟩
 
 lemma pHeight_ge_iff_mem (x : G) (n : ℕ) :
     (n : ℕ∞) ≤ pHeight p x ↔ x ∈ pPow p n := by
@@ -194,98 +203,57 @@ lemma pHeight_add_ge (x y : G) (n : ℕ)
   obtain ⟨b, hb⟩ := hy
   exact ⟨a + b, by rw [smul_add, ha, hb]⟩
 
-/-- 0 has height ⊤. -/
-@[simp] lemma pHeight_zero : pHeight p (0 : G) = ⊤ := by
-  -- {n | ∃ y, p^n • y = 0} = ℕ (take y = 0), so sSup of its image is ⊤.
-  sorry
-
 lemma pHeight_add_ge_min (x y : G) :
     min (pHeight p x) (pHeight p y) ≤ pHeight p (x + y) := by
-  by_contra! h_contra
-  obtain ⟨n, hn⟩ : ∃ n : ℕ, pHeight p (x + y) < n ∧ n ≤ pHeight p x ∧ n ≤ pHeight p y := by
-    by_cases hx : pHeight p x = ⊤ <;> by_cases hy : pHeight p y = ⊤ <;>
-      simp_all +decide [lt_top_iff_ne_top]
-    · exact?
-    · cases' h : pHeight p y with n <;> aesop
-    · cases h : pHeight p x <;> aesop
-    · cases' h : pHeight p x with n hn; cases' h' : pHeight p y with n' hn'; aesop
-      · contradiction
-      · cases' h' : pHeight p y with n' hn'; aesop
-        cases le_total n n' <;> aesop
-  have hxn : ∃ y' : G, p ^ n • y' = x := (pHeight_ge_iff p x n).mp hn.2.1
-  have hyn : ∃ y' : G, p ^ n • y' = y := (pHeight_ge_iff p y n).mp hn.2.2
-  exact hn.1.not_le ((pHeight_ge_iff p (x + y) n).mpr
-    ⟨hxn.choose + hyn.choose, by rw [smul_add, hxn.choose_spec, hyn.choose_spec]⟩)
+  by_cases hxy : pHeight p x ≥ pHeight p y
+  · have hxy_in_pnG : ∀ n : ℕ, (n : ℕ∞) ≤ pHeight p y → ∃ z : G, p ^ n • z = x + y := by
+      intro n hn
+      obtain ⟨zx, hzx⟩ := (pHeight_ge_iff p x n).1 (le_trans hn hxy)
+      obtain ⟨zy, hzy⟩ := (pHeight_ge_iff p y n).1 hn
+      exact ⟨zx + zy, by rw [smul_add, hzx, hzy]⟩
+    contrapose! hxy_in_pnG with hxy_not_in_pnG
+    simp_all +decide [pHeight_ge_iff]
+    obtain ⟨n, hn₁, hn₂⟩ : ∃ n : ℕ, (n : ℕ∞) ≤ pHeight p y ∧ (n : ℕ∞) > pHeight p (x + y) := by
+      cases' h : pHeight p y with n
+      · cases' h' : pHeight p (x + y) with n'
+        · aesop
+        · exact ⟨n' + 1, le_top, WithTop.coe_lt_coe.mpr (Nat.lt_succ_self _)⟩
+      · aesop
+    exact ⟨n, by simpa using (pHeight_ge_iff p y n).1 hn₁,
+           fun z hz => (not_le.mpr hn₂) ((pHeight_ge_iff p (x + y) n).2 ⟨z, hz⟩)⟩
+  · have h_subadd : ∀ n : ℕ, (n : ℕ∞) ≤ pHeight p x → (n : ℕ∞) ≤ pHeight p (x + y) := fun n hn =>
+      pHeight_add_ge p x y n hn (le_trans hn (le_of_not_ge hxy))
+    cases h : pHeight p x <;> aesop
 
 lemma pHeight_add_eq_min_of_ne (x y : G) (h : pHeight p x ≠ pHeight p y) :
     pHeight p (x + y) = min (pHeight p x) (pHeight p y) := by
-  suffices h_ind : ∀ m n : ℕ, m < n → ∀ x y : G,
-      pHeight p x = m → pHeight p y = n → pHeight p (x + y) = m by
-    cases' lt_or_gt_of_ne h with h h <;> simp_all +decide [min_eq_left_of_lt]
-    · cases' eq_or_ne (pHeight p x) ⊤ with hx hx <;>
-        cases' eq_or_ne (pHeight p y) ⊤ with hy hy <;>
-        simp_all +decide [lt_top_iff_ne_top]
-      · have hy_inf : ∀ n : ℕ, ∃ z : G, p ^ n • z = y := fun n => by
-          have h_le : (n : ℕ∞) ≤ pHeight p y := by aesop
-          exact (pHeight_ge_iff p y n).mp h_le
-        have h_ge : pHeight p (x + y) ≥ pHeight p x := by
-          have h_ge : ∀ n : ℕ, (n : ℕ∞) ≤ pHeight p x → (n : ℕ∞) ≤ pHeight p (x + y) := by
-            intro n hn
-            obtain ⟨z, hz⟩ := (pHeight_ge_iff p x n).mp hn
-            obtain ⟨w, hw⟩ := hy_inf n
-            exact (pHeight_ge_iff p (x + y) n).mpr ⟨z + w, by rw [smul_add, hz, hw]⟩
-          exact?
-        refine' le_antisymm _ h_ge
-        refine' csSup_le _ _ <;> norm_num
-        · exact ⟨0, ⟨x + y, by simp +decide⟩⟩
-        · rintro b n z hz rfl
-          exact (pHeight_ge_iff p x n).mpr (by
-            obtain ⟨w, hw⟩ := hy_inf n
-            use z - w; simp +decide [hw, hz, smul_sub])
-      · cases' x : pHeight p x with m <;> cases' y : pHeight p y with n <;> aesop
-    · cases' h : pHeight p x with m <;> cases' h' : pHeight p y with n <;>
-        simp_all +decide [add_comm]
-      · have hx_inf : ∀ n : ℕ, ∃ z : G, p ^ n • z = x := fun n => by
-          have := h ▸ pHeight_ge_iff p x n; aesop
-        have h_ge_n : (n : ℕ∞) ≤ pHeight p (x + y) := by
-          obtain ⟨z, hz⟩ := hx_inf n
-          obtain ⟨w, hw⟩ := (pHeight_ge_iff p y n).mp h'.ge
-          exact (pHeight_ge_iff p (x + y) n).mpr ⟨z + w, by rw [smul_add, hz, hw]⟩
-        refine' le_antisymm _ h_ge_n
-        refine' csSup_le _ _ <;> norm_num
-        · exact ⟨0, ⟨x + y, by simp +decide⟩⟩
-        · rintro _ m z hz rfl; contrapose! hz; simp_all +decide [pHeight_ge_iff]
-          intro H
-          have := pHeight_ge_iff p y m; simp_all +decide [pHeight_ge_iff]
-          obtain ⟨w, hw⟩ := hx_inf m
-          obtain ⟨v, hv⟩ := this.mpr ⟨z - w, by simp +decide [hw, H, smul_sub]⟩
-          linarith
-          exact hz.not_le (Nat.le_trans ‹_› (Nat.le_succ _))
-      · rw [min_eq_right (mod_cast le_of_lt ‹_›), add_comm, h_ind _ _ ‹_› _ _ h' h]
-  intros m n mn x y hx hy
-  have h_le : pHeight p (x + y) ≥ m :=
-    pHeight_add_ge p x y m (hx.ge) (hy.symm ▸ mod_cast mn.le)
-  have h_lt : pHeight p (x + y) < n := by
-    by_contra h_contra
-    have ⟨z, hz⟩ := (pHeight_ge_iff p (x + y) n).mp (le_of_not_gt h_contra)
-    have ⟨w, hw⟩ : ∃ w : G, p ^ n • w = x := by
-      have ⟨w, hw⟩ : ∃ w : G, p ^ n • w = y := by
-        have := pHeight_ge_iff p y n; aesop
-      exact ⟨z - w, by simp_all +decide [smul_sub]⟩
-    have h_contra'' : pHeight p x ≥ n := (pHeight_ge_iff p x n).mpr ⟨w, hw⟩
-    exact absurd h_contra'' (by rw [hx]; exact mod_cast mn.not_le)
-  have h_eq : pHeight p (x + y) = m := by
-    by_contra h_contra
-    have h_gt : pHeight p (x + y) > m := lt_of_le_of_ne h_le (Ne.symm h_contra)
-    have ⟨z, hz⟩ : ∃ z : G, p ^ (m + 1) • z = x + y := by
-      have h_div : (m + 1 : ℕ∞) ≤ pHeight p (x + y) := by exact?
-      exact (pHeight_ge_iff p (x + y) (m + 1)).mp h_div
-    have ⟨w, hw⟩ : ∃ w : G, p ^ (m + 1) • w = y := by
-      have : pHeight p y ≥ m + 1 := hy.symm ▸ Nat.cast_le.mpr (Nat.succ_le_of_lt mn)
-      exact?
-    have ⟨v, hv⟩ : ∃ v : G, p ^ (m + 1) • v = x := ⟨z - w, by simp [hz, hw, smul_sub]⟩
-    have : pHeight p x ≥ m + 1 := (pHeight_ge_iff p x (m + 1)).mpr ⟨v, hv⟩
-    exact absurd this (by rw [hx]; exact mod_cast (Nat.lt_succ_self m).not_le)
-  exact h_eq ▸ rfl
+  wlog hx_lt_hy : pHeight p x < pHeight p y generalizing x y
+  · rw [add_comm, this y x h.symm (lt_of_le_of_ne (le_of_not_gt hx_lt_hy) h.symm)]
+    exact min_comm _ _
+  -- First prove h(x+y) ≤ h(x) (the hard direction), then conclude via le_antisymm.
+  have hle : pHeight p (x + y) ≤ pHeight p x := by
+    -- If h(x+y) > h(x), then x = (x+y) − y has height > h(x), contradiction.
+    by_contra hlt
+    push_neg at hlt  -- hlt : pHeight p x < pHeight p (x + y)
+    -- h(x) is finite since h(x) < h(y) ≤ ⊤
+    obtain ⟨k, hk⟩ : ∃ k : ℕ, (k : ℕ∞) = pHeight p x :=
+      WithTop.ne_top_iff_exists.mp (ne_top_of_lt hx_lt_hy)
+    -- k < h(y) and k < h(x+y), so both y and x+y lie in p^(k+1)·G
+    have hk_lt_y  : (k : ℕ∞) < pHeight p y       := by rw [hk]; exact hx_lt_hy
+    have hk_lt_xy : (k : ℕ∞) < pHeight p (x + y) := by rw [hk]; exact hlt
+    -- helper: (k : ℕ∞) < a → (↑(k+1) : ℕ∞) ≤ a
+    have succ_le : ∀ a : ℕ∞, (k : ℕ∞) < a → (↑(k + 1) : ℕ∞) ≤ a := fun a ha => by
+      rcases a with (_ | m)
+      · exact le_top
+      · exact WithTop.coe_le_coe.mpr (Nat.succ_le_of_lt (WithTop.coe_lt_coe.mp ha))
+    obtain ⟨zy,  hzy ⟩ := (pHeight_ge_iff p y       (k + 1)).mp (succ_le _ hk_lt_y)
+    obtain ⟨zxy, hzxy⟩ := (pHeight_ge_iff p (x + y) (k + 1)).mp (succ_le _ hk_lt_xy)
+    -- x = (x+y) − y ∈ p^(k+1)·G, contradicting h(x) = k
+    have hx_mem : (↑(k + 1) : ℕ∞) ≤ pHeight p x :=
+      (pHeight_ge_iff p x (k + 1)).mpr ⟨zxy - zy, by rw [smul_sub, hzxy, hzy, add_sub_cancel_right]⟩
+    rw [← hk] at hx_mem
+    exact absurd (WithTop.coe_le_coe.mp hx_mem) (by omega)
+  -- h(x+y) = min(h(x), h(y)): upper bound from hle + transitivity, lower bound from subadditivity.
+  exact le_antisymm (le_min hle (le_trans hle hx_lt_hy.le)) (pHeight_add_ge_min p x y)
 
 end HeightLemmas
