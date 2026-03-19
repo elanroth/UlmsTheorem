@@ -132,11 +132,24 @@ lemma IsPure_top : IsPure p (⊤ : AddSubgroup G) := by
   refine ⟨⟨y, by simp⟩, ?_⟩
   exact Subtype.ext hy
 
-lemma IsPure.ulmHeight_eq {A : AddSubgroup G} (hA : IsPure p A) (x : A) :
+lemma IsPure.ulmHeight_eq [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A) (x : A) :
     ulmHeight p (x : G) = ulmHeight p x (G := A) := by
   sorry
 
-lemma IsPure.map_of_heightPres {A : AddSubgroup G} (hA : IsPure p A)
-    (φ : G →+ H) (hφ_inj : Function.Injective φ) (hφ : IsHeightPreserving p φ) :
+lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A)
+    (φ : G →+ H) (_hφ_inj : Function.Injective φ) (hφ : IsHeightPreserving p φ) :
     IsPure p (A.map φ) := by
-  sorry
+  intro n x hx
+  rcases x.property with ⟨a, haA, hax⟩
+  have hx' : φ a ∈ pPow p n (G := H) := by
+    simpa [hax] using hx
+  rw [← ulmSubgroup_nat (p := p) n] at hx'
+  have ha_pow : a ∈ pPow p n (G := G) := by
+    rw [← ulmSubgroup_nat (p := p) n]
+    exact (hφ a n).mpr hx'
+  rcases hA n ⟨a, haA⟩ ha_pow with ⟨b, hb⟩
+  refine ⟨⟨φ b, ⟨b, b.property, rfl⟩⟩, ?_⟩
+  ext
+  have hb' : p ^ n • (b : G) = a := congrArg (fun z : A => (z : G)) hb
+  exact (by
+    simpa [map_nsmul] using (congrArg φ hb').trans hax)

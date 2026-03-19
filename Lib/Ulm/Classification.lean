@@ -40,6 +40,26 @@ def BFStep.init : BFStep p (G := G) (H := H) where
     intro a α
     constructor <;> intro h <;> simp [AddSubgroup.mem_bot.mp a.prop]
 
+omit hp in
+/-- Extend a finite stage to cover a prescribed element of `G`. -/
+lemma BFStep.forth_of_mem
+    (s : BFStep p (G := G) (H := H)) {g : G} (hg : g ∈ s.A) :
+    ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
+      g ∈ s'.A ∧ ∀ a : s.A, (s'.φ ⟨a.val, hAA a.prop⟩ : H) = s.φ a := by
+  refine ⟨s, le_rfl, le_rfl, hg, ?_⟩
+  intro a
+  rfl
+
+omit hp in
+/-- Extend a finite stage to cover a prescribed element of `H` when it is already present. -/
+lemma BFStep.back_of_mem
+    (s : BFStep p (G := G) (H := H)) {h : H} (hh : h ∈ s.B) :
+    ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
+      h ∈ s'.B ∧ ∀ a : s.A, (s'.φ ⟨a.val, hAA a.prop⟩ : H) = s.φ a := by
+  refine ⟨s, le_rfl, le_rfl, hh, ?_⟩
+  intro a
+  rfl
+
 /-- Extend a finite stage to cover a prescribed element of `G`. -/
 lemma BFStep.forth
     (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
@@ -47,7 +67,18 @@ lemma BFStep.forth
     (s : BFStep p (G := G) (H := H)) (g : G) :
     ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (hBB : s.B ≤ s'.B),
       g ∈ s'.A ∧ ∀ a : s.A, (s'.φ ⟨a.val, hAA a.prop⟩ : H) = s.φ a := by
-  sorry
+  obtain ⟨A', hA', hAfg', hAA', hgA', B', hB', hBfg', hBB', φ', hφ', hcomp⟩ :=
+    extend_by_one_fg (p := p) hG hH hinv s.hA s.hAfg s.hB s.hBfg s.φ s.hφ g
+  refine ⟨
+    { A := A'
+      B := B'
+      hA := hA'
+      hB := hB'
+      hAfg := hAfg'
+      hBfg := hBfg'
+      φ := φ'
+      hφ := hφ' },
+    hAA', hBB', hgA', hcomp⟩
 
 /-- Extend a finite stage to cover a prescribed element of `H`. -/
 lemma BFStep.back
@@ -56,7 +87,9 @@ lemma BFStep.back
     (s : BFStep p (G := G) (H := H)) (h : H) :
     ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (hBB : s.B ≤ s'.B),
       h ∈ s'.B ∧ ∀ a : s.A, (s'.φ ⟨a.val, hAA a.prop⟩ : H) = s.φ a := by
-  sorry
+  by_cases hh : h ∈ s.B
+  · exact s.back_of_mem (p := p) hh
+  · sorry
 
 /-- Hard direction of Ulm's theorem: equal Ulm invariants imply isomorphism. -/
 lemma iso_of_ulmInvariant_eq
