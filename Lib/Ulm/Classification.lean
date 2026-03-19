@@ -65,7 +65,7 @@ lemma BFStep.forth
     (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
     (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
     (s : BFStep p (G := G) (H := H)) (g : G) :
-    ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (hBB : s.B ≤ s'.B),
+    ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
       g ∈ s'.A ∧ ∀ a : s.A, (s'.φ ⟨a.val, hAA a.prop⟩ : H) = s.φ a := by
   obtain ⟨A', hA', hAfg', hAA', hgA', B', hB', hBfg', hBB', φ', hφ', hcomp⟩ :=
     extend_by_one_fg (p := p) hG hH hinv s.hA s.hAfg s.hB s.hBfg s.φ s.hφ g
@@ -85,7 +85,7 @@ lemma BFStep.back
     (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
     (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
     (s : BFStep p (G := G) (H := H)) (h : H) :
-    ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (hBB : s.B ≤ s'.B),
+    ∃ (s' : BFStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
       h ∈ s'.B ∧ ∀ a : s.A, (s'.φ ⟨a.val, hAA a.prop⟩ : H) = s.φ a := by
   by_cases hh : h ∈ s.B
   · exact s.back_of_mem (p := p) hh
