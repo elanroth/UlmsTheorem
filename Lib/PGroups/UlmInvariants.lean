@@ -29,7 +29,9 @@ variable (p : ℕ) [hp : Fact p.Prime]
 /-- p^(α+1)·G as a subgroup of p^α·G (the inclusion needed for the quotient). -/
 noncomputable def ulmSuccIncl {G : Type*} [AddCommGroup G] (α : Ordinal) :
     ulmSubgroup p (Order.succ α) (G := G) →+ ulmSubgroup p α (G := G) := by
-  sorry
+  refine AddSubgroup.subtype _ |>.codRestrict _ ?_
+  intro x
+  exact ulmSubgroup_antitone p (Order.le_succ α) x.property
 
 /-- The Ulm quotient at α: (p^α·G) / (p^(α+1)·G).
     This is a ℤ/pℤ-module (every element has order p). -/
@@ -39,34 +41,50 @@ noncomputable def ulmQuotient {G : Type*} [AddCommGroup G] (α : Ordinal) :
     ((ulmSubgroup p (Order.succ α) (G := G)).comap
       (ulmSubgroup p α (G := G)).subtype)
 
-instance {G : Type*} [AddCommGroup G] (α : Ordinal) :
+noncomputable instance {G : Type*} [AddCommGroup G] (α : Ordinal) :
     AddCommGroup (ulmQuotient p α (G := G)) := by
   unfold ulmQuotient; infer_instance
 
 /-- Every element of the Ulm quotient has order p. -/
-lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] [IsPGroup p G] (α : Ordinal)
+lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
     (x : ulmQuotient p α (G := G)) : p • x = 0 := by
-  sorry
+  refine Quotient.inductionOn x ?_
+  intro a
+  change QuotientAddGroup.mk'
+      ((ulmSubgroup p (Order.succ α) (G := G)).comap (ulmSubgroup p α (G := G)).subtype)
+      (p • a) =
+    QuotientAddGroup.mk'
+      ((ulmSubgroup p (Order.succ α) (G := G)).comap (ulmSubgroup p α (G := G)).subtype)
+      0
+  have hmem : (p • (a : G)) ∈ ulmSubgroup p (Order.succ α) (G := G) := by
+    rw [ulmSubgroup_succ]
+    exact ⟨a, a.property, rfl⟩
+  apply (QuotientAddGroup.mk'_eq_mk' _).2
+  refine ⟨-(p • a), ?_, by simp⟩
+  exact (ulmSubgroup p (Order.succ α) (G := G)).neg_mem hmem
 
 /-! ### ulmQuotient as a ℤ/pℤ-module -/
 
-/-- The Ulm quotient is naturally a ℤ/pℤ-module (vector space over the prime field). -/
-noncomputable instance ulmQuotient_module {G : Type*} [AddCommGroup G] [IsPGroup p G]
+/-- The Ulm quotient is naturally a `ZMod p`-module. -/
+noncomputable instance ulmQuotient_module {G : Type*} [AddCommGroup G]
     (α : Ordinal) : Module (ZMod p) (ulmQuotient p α (G := G)) := by
-  sorry
+  classical
+  refine AddCommGroup.zmodModule (n := p) (G := ulmQuotient p α (G := G)) ?_
+  intro x
+  simpa using ulmQuotient_orderOf_dvd_p p α x
 
 /-! ### Ulm invariants -/
 
-/-- The Ulm invariant f_G(α) = dim_{ℤ/pℤ} (p^α·G / p^(α+1)·G). -/
-noncomputable def ulmInvariant {G : Type*} [AddCommGroup G] [IsPGroup p G]
-    (α : Ordinal) (G := G) : Cardinal :=
+/-- The Ulm invariant `f_G(α) = dim_{ℤ/pℤ} (p^α·G / p^(α+1)·G)`. -/
+noncomputable def ulmInvariant {G : Type*} [AddCommGroup G]
+    (α : Ordinal) : Cardinal :=
   Module.rank (ZMod p) (ulmQuotient p α (G := G))
 
 /-! ### Ulm length -/
 
 /-- The Ulm length of a reduced p-group: the least ordinal α at which p^α·G = 0.
     For countable reduced p-groups this is a countable ordinal. -/
-noncomputable def ulmLength {G : Type*} [AddCommGroup G] (hred : IsReducedPGroup p G) :
+noncomputable def ulmLength {G : Type*} [AddCommGroup G] (_hred : IsReducedPGroup p G) :
     Ordinal :=
   sInf {α | ulmSubgroup p α (G := G) = ⊥}
 
@@ -80,10 +98,10 @@ lemma exists_zero : ∃ α : Ordinal, ulmSubgroup p α (G := G) = ⊥ := by
 
 /-- p^(ulmLength)·G = 0. -/
 lemma at_ulmLength : ulmSubgroup p (ulmLength p hred) (G := G) = ⊥ :=
-  csInf_mem (exists_zero p hred)
+  csInf_mem (exists_zero (p := p) (G := G))
 
 /-- Ulm invariants vanish above the Ulm length. -/
-lemma inv_zero_of_ge [IsPGroup p G] (α : Ordinal) (hα : ulmLength p hred ≤ α) :
+lemma inv_zero_of_ge (α : Ordinal) (hα : ulmLength p hred ≤ α) :
     ulmInvariant p α (G := G) = 0 := by
   sorry
 
@@ -91,8 +109,8 @@ end ulmLength
 
 /-! ### Ulm sequence as a function ℕ → Cardinal (for successor-length groups) -/
 
-/-- For groups of Ulm length ω·γ + n, the "tail" Ulm invariants are those at
-    positions ω·γ, ω·γ+1, …, ω·γ+(n-1).  We extract them as a finite sequence. -/
-noncomputable def tailInvariants {G : Type*} [AddCommGroup G] [IsPGroup p G]
+/-- For groups of Ulm length `ω·γ + n`, the tail Ulm invariants are those at
+`ω·γ`, `ω·γ+1`, ..., `ω·γ+(n-1)`. -/
+noncomputable def tailInvariants {G : Type*} [AddCommGroup G]
     (γ : Ordinal) (n : ℕ) : Fin n → Cardinal :=
-  fun k => ulmInvariant p (ω * γ + k) (G := G)
+  fun k => ulmInvariant p (ω * γ + k.1) (G := G)
