@@ -60,6 +60,11 @@ lemma BFStep.back_of_mem
   intro a
   rfl
 
+lemma BFStep.injective
+    (hG : IsReducedPGroup p G) (s : BFStep p (G := G) (H := H)) :
+    Function.Injective s.φ :=
+  IsHeightPresOn.injective (p := p) hG s.hφ
+
 /-- Extend a finite stage to cover a prescribed element of `G`. -/
 lemma BFStep.forth
     (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)

@@ -94,4 +94,46 @@ lemma mem_ulmSubgroup_nat_iff (n : ℕ) (x : G) :
     x ∈ ulmSubgroup p (n : Ordinal) (G := G) ↔ ∃ y : G, p ^ n • y = x := by
   rw [ulmSubgroup_nat, pPow_mem_iff]
 
+lemma mem_ulmSubgroup_add_nat_iff (α : Ordinal) (n : ℕ) (x : G) :
+    x ∈ ulmSubgroup p (α + n) (G := G) ↔
+      ∃ y ∈ ulmSubgroup p α (G := G), p ^ n • y = x := by
+  induction n generalizing x with
+  | zero =>
+      simp
+  | succ n ih =>
+      rw [natCast_succ, add_succ]
+      rw [mem_ulmSubgroup_succ_iff]
+      constructor
+      · rintro ⟨z, hz, rfl⟩
+        rcases (ih z).1 hz with ⟨y, hy, rfl⟩
+        refine ⟨y, hy, ?_⟩
+        rw [pow_succ, mul_smul, smul_comm]
+      · rintro ⟨y, hy, hxy⟩
+        refine ⟨p ^ n • y, (ih _).2 ⟨y, hy, rfl⟩, ?_⟩
+        rw [← hxy, pow_succ, mul_smul, smul_comm]
+
+lemma ulmSubgroup_add_nat (α : Ordinal) (n : ℕ) :
+    ulmSubgroup p (α + n) (G := G) =
+      { x | ∃ y ∈ ulmSubgroup p α (G := G), p ^ n • y = x } := by
+  ext x
+  exact mem_ulmSubgroup_add_nat_iff (p := p) (G := G) α n x
+
+lemma map_ulmSubgroup_le {H : Type*} [AddCommGroup H] (φ : G →+ H) (α : Ordinal) :
+    (ulmSubgroup p α (G := G)).map φ ≤ ulmSubgroup p α (G := H) := by
+  induction α using Ordinal.limitRecOn with
+  | zero =>
+      simp [ulmSubgroup]
+  | succ α ih =>
+      intro y hy
+      rcases hy with ⟨x, hx, rfl⟩
+      rw [ulmSubgroup_succ] at hx ⊢
+      rcases hx with ⟨z, hz, rfl⟩
+      exact ⟨φ z, ih ⟨z, hz, rfl⟩, by simp⟩
+  | limit o ho IH =>
+      intro y hy
+      rcases hy with ⟨x, hx, rfl⟩
+      simp [ulmSubgroup, Ordinal.limitRecOn_limit, ho] at hx ⊢
+      intro β hβ
+      exact IH β hβ ⟨x, hx β hβ, rfl⟩
+
 end UlmSubgroupLemmas

@@ -117,10 +117,25 @@ lemma pOrder_smul_p (x : G) (hx : 0 < pOrder p x) :
               exact (not_le_of_gt <| by
                 simpa using (ENat.lt_coe_add_one_iff (m := (m : ℕ∞)) (n := m)).2 le_rfl) hxle |>.elim
 
+lemma pOrder_pos_of_ne_zero (x : G) (hx : x ≠ 0) :
+    0 < pOrder p x := by
+  by_contra h
+  have hle : pOrder p x ≤ 0 := le_of_not_gt h
+  have hx0 : p ^ 0 • x = 0 :=
+    (smul_eq_zero_iff_le_pOrder (p := p) (x := x) 0).2 hle
+  exact hx (by simpa using hx0)
+
 /-- A subgroup is `p`-pure if divisibility by powers of `p` seen in the ambient
 group is already witnessed internally. -/
 def IsPure (A : AddSubgroup G) : Prop :=
   ∀ (n : ℕ) (x : A), (x : G) ∈ pPow p n (G := G) → x ∈ pPow p n (G := A)
+
+/-- An isotype subgroup is one whose induced Ulm filtration agrees with the
+ambient filtration on every element. This is stronger than purity, and it is
+the right hypothesis for ambient/intrinsic height equality. -/
+def IsIsotype (A : AddSubgroup G) : Prop :=
+  ∀ (x : A) (α : Ordinal.{0}),
+    (x : G) ∈ ulmSubgroup p α (G := G) ↔ x ∈ ulmSubgroup p α (G := A)
 
 lemma IsPure_bot : IsPure p (⊥ : AddSubgroup G) := by
   intro n x hx
@@ -132,12 +147,61 @@ lemma IsPure_top : IsPure p (⊤ : AddSubgroup G) := by
   refine ⟨⟨y, by simp⟩, ?_⟩
   exact Subtype.ext hy
 
-lemma IsPure.ulmHeight_eq [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A) (x : A) :
+lemma IsIsotype.isPure [Fact p.Prime] {A : AddSubgroup G} (hA : IsIsotype p A) :
+    IsPure p A := by
+  intro n x hx
+  rw [← ulmSubgroup_nat (p := p) (G := G) n] at hx
+  rw [← ulmSubgroup_nat (p := p) (G := A) n]
+  exact (hA x n).mp hx
+
+lemma ulmHeight_subgroup_le_ambient [Fact p.Prime] {A : AddSubgroup G} (x : A) :
+    ulmHeight p x (G := A) ≤ ulmHeight p (x : G) := by
+  refine iSup₂_le ?_
+  intro α hx
+  have hx' : (x : G) ∈ ulmSubgroup p α (G := G) := by
+    exact map_ulmSubgroup_le (p := p) (φ := A.subtype) α ⟨x, hx, rfl⟩
+  exact le_iSup_of_le α <| le_iSup_of_le hx' le_rfl
+
+lemma IsIsotype.ulmHeight_eq {A : AddSubgroup G} (hA : IsIsotype p A) (x : A) :
     ulmHeight p (x : G) = ulmHeight p x (G := A) := by
-  sorry
+  apply le_antisymm
+  · refine iSup₂_le ?_
+    intro α hx
+    exact le_iSup_of_le α <| le_iSup_of_le ((hA x α).mp hx) le_rfl
+  · refine iSup₂_le ?_
+    intro α hx
+    exact le_iSup_of_le α <| le_iSup_of_le ((hA x α).mpr hx) le_rfl
+
+lemma IsHeightPreserving.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
+    {φ : G →+ H} (hφ : IsHeightPreserving p φ) :
+    Function.Injective φ := by
+  intro x y hxy
+  have hdiv : ∀ n : ℕ, ∃ z : G, p ^ n • z = x - y := by
+    intro n
+    have hmem : x - y ∈ ulmSubgroup p (n : Ordinal) (G := G) := by
+      exact (hφ (x - y) (n : Ordinal)).mpr (by
+        simp [hxy])
+    rw [ulmSubgroup_nat (p := p) (G := G) n] at hmem
+    exact (pPow_mem_iff p (x - y) n).mp hmem
+  exact sub_eq_zero.mp (hred (x - y) hdiv)
+
+lemma IsHeightPresOn.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
+    {A : AddSubgroup G} {B : AddSubgroup H} {φ : A →+ B} (hφ : IsHeightPresOn p φ) :
+    Function.Injective φ := by
+  intro x y hxy
+  apply Subtype.ext
+  have hdiv : ∀ n : ℕ, ∃ z : G, p ^ n • z = ((x : G) - y : G) := by
+    intro n
+    have hmem : (((x - y : A) : A) : G) ∈ ulmSubgroup p (n : Ordinal) (G := G) := by
+      exact (hφ (x - y) (n : Ordinal)).mpr (by simp [hxy])
+    rw [ulmSubgroup_nat (p := p) (G := G) n] at hmem
+    simpa using (pPow_mem_iff p (((x - y : A) : A) : G) n).mp hmem
+  have hzero : ((x : G) - y : G) = 0 := by
+    simpa using hred (((x - y : A) : A) : G) hdiv
+  exact sub_eq_zero.mp hzero
 
 lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A)
-    (φ : G →+ H) (_hφ_inj : Function.Injective φ) (hφ : IsHeightPreserving p φ) :
+    (φ : G →+ H) (hφ : IsHeightPreserving p φ) :
     IsPure p (A.map φ) := by
   intro n x hx
   rcases x.property with ⟨a, haA, hax⟩
@@ -153,3 +217,22 @@ lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p
   have hb' : p ^ n • (b : G) = a := congrArg (fun z : A => (z : G)) hb
   exact (by
     simpa [map_nsmul] using (congrArg φ hb').trans hax)
+
+lemma IsPure.range_of_heightPresOn [Fact p.Prime] {A : AddSubgroup G} {B : AddSubgroup H}
+    (hA : IsPure p A) (φ : A →+ B) (hφ : IsHeightPresOn p φ) :
+    IsPure p ((⊤ : AddSubgroup A).map (B.subtype.comp φ)) := by
+  intro n x hx
+  rcases x.property with ⟨a, _haA, hax⟩
+  have hx' : ((B.subtype.comp φ) a : H) ∈ pPow p n (G := H) := by
+    simpa [hax] using hx
+  rw [← ulmSubgroup_nat (p := p) (G := H) n] at hx'
+  have ha_pow : (a : G) ∈ pPow p n (G := G) := by
+    rw [← ulmSubgroup_nat (p := p) (G := G) n]
+    exact (hφ a n).mpr hx'
+  rcases hA n a ha_pow with ⟨b, hb⟩
+  refine ⟨⟨(B.subtype.comp φ) b, ⟨b, by simp, rfl⟩⟩, ?_⟩
+  apply Subtype.ext
+  calc
+    p ^ n • ((B.subtype.comp φ) b : H) = (B.subtype.comp φ) a := by
+      simpa [AddMonoidHom.comp_apply, map_nsmul] using congrArg (B.subtype.comp φ) hb
+    _ = (x : H) := by simpa using hax

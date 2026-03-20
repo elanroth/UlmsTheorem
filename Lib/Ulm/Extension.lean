@@ -47,6 +47,157 @@ lemma extend_by_one_fg_of_mem
   intro a
   rfl
 
+/-- Adjoin one element to a subgroup by taking the supremum with its cyclic closure. -/
+def adjoinElem (A : AddSubgroup G) (g : G) : AddSubgroup G :=
+  A ⊔ AddSubgroup.closure ({g} : Set G)
+
+lemma le_adjoinElem (A : AddSubgroup G) (g : G) : A ≤ adjoinElem A g := by
+  exact le_sup_left
+
+lemma mem_adjoinElem_right (A : AddSubgroup G) (g : G) :
+    g ∈ adjoinElem A g := by
+  exact
+    (show AddSubgroup.closure ({g} : Set G) ≤ adjoinElem A g from le_sup_right)
+      (AddSubgroup.subset_closure (by simp))
+
+lemma adjoinElem_fg {A : AddSubgroup G} (hAfg : A.FG) (g : G) :
+    (adjoinElem A g).FG := by
+  classical
+  unfold adjoinElem
+  refine hAfg.sup ?_
+  exact (AddSubgroup.fg_iff _).2 ⟨{g}, rfl, Set.finite_singleton g⟩
+
+lemma adjoinElem_eq_sup_zmultiples (A : AddSubgroup G) (g : G) :
+    adjoinElem A g = A ⊔ AddSubgroup.zmultiples g := by
+  unfold adjoinElem
+  rw [AddSubgroup.zmultiples_eq_closure]
+
+lemma mem_adjoinElem_iff {A : AddSubgroup G} {g x : G} :
+    x ∈ adjoinElem A g ↔ ∃ a ∈ A, ∃ n : ℤ, a + n • g = x := by
+  rw [adjoinElem_eq_sup_zmultiples]
+  constructor
+  · intro hx
+    rcases (AddSubgroup.mem_sup).1 hx with ⟨a, ha, z, hz, hsum⟩
+    rcases AddSubgroup.mem_zmultiples_iff.mp hz with ⟨n, rfl⟩
+    exact ⟨a, ha, n, hsum⟩
+  · rintro ⟨a, ha, n, rfl⟩
+    exact AddSubgroup.add_mem_sup ha <| AddSubgroup.mem_zmultiples_iff.mpr ⟨n, rfl⟩
+
+lemma socle_extend_build_map
+    {A : AddSubgroup G} {B : AddSubgroup H}
+    (φ : A →+ B)
+    {g : G} (hg_notin : g ∉ A) {h : H}
+    (hpg_in : p • g ∈ A)
+    (hrel : p • h = (φ ⟨p • g, hpg_in⟩ : H)) :
+    ∃ φ' : adjoinElem A g →+ (⊤ : AddSubgroup H),
+      (∀ a : A, (φ' ⟨a, le_adjoinElem (A := A) (g := g) a.prop⟩ : H) = φ a) ∧
+      (φ' ⟨g, mem_adjoinElem_right (A := A) g⟩ : H) = h := by
+  let ψ : A × ℤ →+ adjoinElem A g :=
+    { toFun := fun z =>
+        ⟨(z.1 : G) + z.2 • g, (mem_adjoinElem_iff (A := A) (g := g)).2 ⟨z.1, z.1.prop, z.2, rfl⟩⟩
+      map_zero' := by
+        ext
+        simp
+      map_add' := by
+        intro x y
+        ext
+        simp [add_assoc, add_left_comm, add_zsmul] }
+  have hψ_surj : Function.Surjective ψ := by
+    intro x
+    rcases (mem_adjoinElem_iff (A := A) (g := g) (x := (x : G))).1 x.prop with ⟨a, ha, n, hn⟩
+    refine ⟨(⟨a, ha⟩, n), ?_⟩
+    ext
+    exact hn
+  let χ : A × ℤ →+ H :=
+    { toFun := fun z => (φ z.1 : H) + z.2 • h
+      map_zero' := by simp
+      map_add' := by
+        intro x y
+        simp [add_assoc, add_left_comm, add_comm, add_zsmul] }
+  have hker : ψ.ker ≤ χ.ker := by
+    intro z hz
+    rw [AddMonoidHom.mem_ker] at hz ⊢
+    have hz0 : ((z.1 : G) + z.2 • g : G) = 0 := by
+      exact congrArg (fun t : adjoinElem A g => (t : G)) hz
+    have hzA : z.2 • g ∈ A := by
+      have hzA' : z.2 • g = -((z.1 : A) : G) := by
+        rw [eq_neg_iff_add_eq_zero]
+        simpa [add_comm] using hz0
+      rw [hzA']
+      exact A.neg_mem z.1.prop
+    have hp_dvd : (p : ℤ) ∣ z.2 := by
+      by_contra hp_dvd
+      have hcop_nat : Nat.Coprime p z.2.natAbs := by
+        refine (Nat.Prime.coprime_iff_not_dvd Fact.out).2 ?_
+        intro hdiv
+        exact hp_dvd (Int.natCast_dvd.2 hdiv)
+      have hcop : z.2.gcd ↑p = 1 := by
+        rw [Int.gcd_eq_natAbs]
+        simpa [Nat.gcd_comm] using hcop_nat.gcd_eq_one
+      have hbez : (1 : ℤ) = z.2 * z.2.gcdA ↑p + ↑p * z.2.gcdB ↑p := by
+        simpa [hcop] using (Int.gcd_eq_gcd_ab z.2 p)
+      have hg_mem : g ∈ A := by
+        have hbez' : (1 : ℤ) = z.2.gcdA ↑p * z.2 + z.2.gcdB ↑p * p := by
+          simpa [Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hbez
+        have hg_expr : g =
+            z.2.gcdA ↑p • (z.2 • g) + z.2.gcdB ↑p • ((p : ℤ) • g) := by
+          calc
+            g = (1 : ℤ) • g := by simp
+            _ = (z.2.gcdA ↑p * z.2 + z.2.gcdB ↑p * p) • g := by rw [hbez']
+            _ = z.2.gcdA ↑p • (z.2 • g) + z.2.gcdB ↑p • ((p : ℤ) • g) := by
+              simp [add_zsmul, mul_zsmul]
+        rw [hg_expr]
+        exact A.add_mem (A.zsmul_mem hzA _) (A.zsmul_mem (by simpa using hpg_in) _)
+      exact hg_notin hg_mem
+    rcases hp_dvd with ⟨k, hk⟩
+    have hzA0 : z.1 + k • ⟨p • g, hpg_in⟩ = 0 := by
+      apply Subtype.ext
+      simpa [hk, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hz0
+    calc
+      χ z = (φ z.1 : H) + ((p : ℤ) * k) • h := by
+        simp [χ, hk]
+      _ = (φ z.1 : H) + k • (p • h) := by
+        simp [mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc]
+      _ = (φ z.1 : H) + k • (φ ⟨p • g, hpg_in⟩ : H) := by rw [hrel]
+      _ = (φ (z.1 + k • ⟨p • g, hpg_in⟩) : H) := by
+        simp [map_add, map_zsmul]
+      _ = 0 := by simp [hzA0]
+  let φ0 : adjoinElem A g →+ H :=
+    ψ.liftOfSurjective hψ_surj ⟨χ, hker⟩
+  refine ⟨φ0.codRestrict ⊤ (by intro x; simp), ?_, ?_⟩
+  · intro a
+    have hψa : ψ (a, 0) = ⟨(a : G), le_adjoinElem (A := A) (g := g) a.prop⟩ := by
+      ext
+      simp [ψ]
+    change φ0 ⟨(a : G), le_adjoinElem (A := A) (g := g) a.prop⟩ = φ a
+    rw [← hψa]
+    have hcomp :
+        φ0 (ψ (a, 0)) = χ (a, 0) := by
+      simpa [φ0] using
+        (AddMonoidHom.liftOfRightInverse_comp_apply
+          (f := ψ)
+          (f_inv := Function.surjInv hψ_surj)
+          (hf := Function.rightInverse_surjInv hψ_surj)
+          (g := ⟨χ, hker⟩)
+          (x := (a, 0)))
+    simpa [χ] using hcomp
+  ·
+    have hψg : ψ (0, 1) = ⟨g, mem_adjoinElem_right (A := A) g⟩ := by
+      ext
+      simp [ψ]
+    change φ0 ⟨g, mem_adjoinElem_right (A := A) g⟩ = h
+    rw [← hψg]
+    have hcomp :
+        φ0 (ψ (0, 1)) = χ (0, 1) := by
+      simpa [φ0] using
+        (AddMonoidHom.liftOfRightInverse_comp_apply
+          (f := ψ)
+          (f_inv := Function.surjInv hψ_surj)
+          (hf := Function.rightInverse_surjInv hψ_surj)
+          (g := ⟨χ, hker⟩)
+          (x := (0, 1)))
+    simpa [χ] using hcomp
+
 /-- Socle-step extension of a height-preserving partial map. -/
 lemma socle_extend
     (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
