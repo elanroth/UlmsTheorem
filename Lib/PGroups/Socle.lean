@@ -1,4 +1,4 @@
-import Lib.PGroups.UlmInvariants
+import Lib.PGroups.Defs
 
 /-!
 # Socle-level constructions

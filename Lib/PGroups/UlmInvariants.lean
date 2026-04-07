@@ -1,19 +1,23 @@
-import Lib.PGroups.Defs
+import Lib.PGroups.Socle
 
 /-!
 # Ulm invariants
 
 For a prime p and a reduced abelian p-group G, the **Ulm invariant** at ordinal α is
-  f_G(α) = dim_{ℤ/pℤ} (p^α·G / p^(α+1)·G).
+  f_G(α) = dim_{ℤ/pℤ} (P_α / P_{α+1}),
+where `P_α = G[p] ∩ p^α·G = pSocleAt p α`.
 
-The Ulm invariants completely determine the isomorphism type of G (Ulm's theorem,
-proved in `ACM.UlmTheorem`).
+We also keep the raw filtration quotient `G_α / G_{α+1}` available as
+`layerQuotient` / `layerInvariant`; this is useful auxiliary data, but it is
+not the classical Ulm invariant used in Ulm's theorem.
 
 ## Main definitions
 
-- `ulmQuotient p α G` : the quotient group (p^α·G) / (p^(α+1)·G)
-- `ulmInvariant p α G` : the cardinal rank of ulmQuotient as a ℤ/pℤ-module
-- `ulmLength p G` : the least ordinal α with p^α·G = 0  (exists for reduced groups)
+- `layerQuotient p α G` : the quotient group `(p^α·G) / (p^(α+1)·G)`
+- `layerInvariant p α G` : the cardinal rank of `layerQuotient` as a `ℤ/pℤ`-module
+- `ulmQuotient p α G` : the quotient group `P_α / P_{α+1}`
+- `ulmInvariant p α G` : the cardinal rank of `ulmQuotient` as a `ℤ/pℤ`-module
+- `ulmLength p G` : the least ordinal α with `p^α·G = 0`  (exists for reduced groups)
 
 ## References
 - Fuchs, "Infinite Abelian Groups", Vol. I, Theorem 32.2
@@ -24,30 +28,31 @@ open Ordinal Cardinal
 
 variable (p : ℕ) [hp : Fact p.Prime]
 
-/-! ### The Ulm quotient -/
+/-! ### The raw filtration quotient `G_α / G_{α+1}` -/
 
-/-- p^(α+1)·G as a subgroup of p^α·G (the inclusion needed for the quotient). -/
-noncomputable def ulmSuccIncl {G : Type*} [AddCommGroup G] (α : Ordinal) :
+/-- `G_(α+1)` as a subgroup of `G_α`. -/
+noncomputable def layerSuccIncl {G : Type*} [AddCommGroup G] (α : Ordinal) :
     ulmSubgroup p (Order.succ α) (G := G) →+ ulmSubgroup p α (G := G) := by
   refine AddSubgroup.subtype _ |>.codRestrict _ ?_
   intro x
   exact ulmSubgroup_antitone p (Order.le_succ α) x.property
 
-/-- The Ulm quotient at α: (p^α·G) / (p^(α+1)·G).
-    This is a ℤ/pℤ-module (every element has order p). -/
-noncomputable def ulmQuotient {G : Type*} [AddCommGroup G] (α : Ordinal) :
+/-- The quotient `G_α / G_{α+1}`. This is useful auxiliary filtration data, but
+it is not the classical Ulm invariant. -/
+noncomputable def layerQuotient {G : Type*} [AddCommGroup G] (α : Ordinal) :
     Type _ :=
   (ulmSubgroup p α (G := G)) ⧸
     ((ulmSubgroup p (Order.succ α) (G := G)).comap
       (ulmSubgroup p α (G := G)).subtype)
 
 noncomputable instance {G : Type*} [AddCommGroup G] (α : Ordinal) :
-    AddCommGroup (ulmQuotient p α (G := G)) := by
-  unfold ulmQuotient; infer_instance
+    AddCommGroup (layerQuotient p α (G := G)) := by
+  unfold layerQuotient
+  infer_instance
 
-/-- Every element of the Ulm quotient has order p. -/
-lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
-    (x : ulmQuotient p α (G := G)) : p • x = 0 := by
+/-- Every element of `G_α / G_{α+1}` has order `p`. -/
+lemma layerQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
+    (x : layerQuotient p α (G := G)) : p • x = 0 := by
   refine Quotient.inductionOn x ?_
   intro a
   change QuotientAddGroup.mk'
@@ -63,19 +68,47 @@ lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
   refine ⟨-(p • a), ?_, by simp⟩
   exact (ulmSubgroup p (Order.succ α) (G := G)).neg_mem hmem
 
-/-! ### ulmQuotient as a ℤ/pℤ-module -/
+noncomputable instance layerQuotient_module {G : Type*} [AddCommGroup G]
+    (α : Ordinal) : Module (ZMod p) (layerQuotient p α (G := G)) := by
+  classical
+  refine AddCommGroup.zmodModule (n := p) (G := layerQuotient p α (G := G)) ?_
+  intro x
+  simpa using layerQuotient_orderOf_dvd_p p α x
 
-/-- The Ulm quotient is naturally a `ZMod p`-module. -/
+/-- The raw filtration-layer rank `dim_{ℤ/pℤ}(G_α / G_{α+1})`. -/
+noncomputable def layerInvariant {G : Type*} [AddCommGroup G]
+    (α : Ordinal) : Cardinal :=
+  Module.rank (ZMod p) (layerQuotient p α (G := G))
+
+/-! ### The classical Ulm quotient `P_α / P_{α+1}` -/
+
+/-- The classical Ulm quotient at `α`: `P_α / P_{α+1}`. -/
+noncomputable def ulmQuotient {G : Type*} [AddCommGroup G] (α : Ordinal) :
+    Type _ :=
+  (pSocleAt p α (G := G)) ⧸ pSocleAt_succ_subgroupOf p α
+
+noncomputable instance {G : Type*} [AddCommGroup G] (α : Ordinal) :
+    AddCommGroup (ulmQuotient p α (G := G)) := by
+  unfold ulmQuotient
+  infer_instance
+
+/-- Every element of the classical Ulm quotient has order `p`. -/
+lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
+    (x : ulmQuotient p α (G := G)) : p • x = 0 := by
+  refine Quotient.inductionOn x ?_
+  intro a
+  have hp0 : p • a = 0 := by
+    ext
+    simpa using (mem_pSocleAt p α (a : G)).1 a.property |>.1
+  change QuotientAddGroup.mk' (pSocleAt_succ_subgroupOf p α) (p • a) =
+    QuotientAddGroup.mk' (pSocleAt_succ_subgroupOf p α) 0
+  simpa [hp0]
+
 noncomputable instance ulmQuotient_module {G : Type*} [AddCommGroup G]
     (α : Ordinal) : Module (ZMod p) (ulmQuotient p α (G := G)) := by
-  classical
-  refine AddCommGroup.zmodModule (n := p) (G := ulmQuotient p α (G := G)) ?_
-  intro x
-  simpa using ulmQuotient_orderOf_dvd_p p α x
+  simpa [ulmQuotient] using (pSocleAt_quot_module (p := p) (G := G) α)
 
-/-! ### Ulm invariants -/
-
-/-- The Ulm invariant `f_G(α) = dim_{ℤ/pℤ} (p^α·G / p^(α+1)·G)`. -/
+/-- The classical Ulm invariant `f_G(α) = dim_{ℤ/pℤ}(P_α / P_{α+1})`. -/
 noncomputable def ulmInvariant {G : Type*} [AddCommGroup G]
     (α : Ordinal) : Cardinal :=
   Module.rank (ZMod p) (ulmQuotient p α (G := G))
@@ -126,8 +159,11 @@ lemma inv_zero_of_ge (α : Ordinal) (hα : ulmLength p hred ≤ α) :
     simpa [at_ulmLength (p := p) (hred := hred)] using
       (ulmSubgroup_antitone p hα : ulmSubgroup p α (G := G) ≤
         ulmSubgroup p (ulmLength p hred) (G := G))
-  haveI : Subsingleton (ulmSubgroup p α (G := G)) := by
-    rw [hzero]
+  have hpzero : pSocleAt p α (G := G) = ⊥ := by
+    rw [pSocleAt, hzero]
+    simp
+  haveI : Subsingleton (pSocleAt p α (G := G)) := by
+    rw [hpzero]
     infer_instance
   haveI : Subsingleton (ulmQuotient p α (G := G)) := by
     refine ⟨?_⟩

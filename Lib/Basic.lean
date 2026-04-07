@@ -23,6 +23,6 @@ Throughout we work with additive abelian groups.
 - `p ^ n • x` : the n-fold p-multiple of x (standard Mathlib nsmul)
 - `pPow p n G` : Ulm subgroup p^n · G ⊆ G  (ℕ-indexed)
 - `ulmSubgroup p α G` : Ulm subgroup p^α · G ⊆ G  (Ordinal-indexed)
-- `ulmInvariant p α G` : dim_{ℤ/pℤ} (p^α G / p^(α+1) G)
+- `ulmInvariant p α G` : dim_{ℤ/pℤ} (P_α / P_{α+1}) where `P_α = G[p] ∩ p^α G`
 - `ulmLength p G` : least α with p^α G = 0  (for reduced groups)
 -/

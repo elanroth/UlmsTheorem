@@ -3,6 +3,6 @@ import Lib.Ulm.Invariance
 /-!
 # Morphisms and invariance lemmas
 
-This module is the new entry point for morphism lemmas connecting isomorphisms,
-Ulm subgroups, and Ulm invariants.
+Stable entry point for isomorphism lemmas connecting Ulm subgroups, filtered
+p-socle layers, and the classical `P_α / P_{α+1}` Ulm invariants.
 -/

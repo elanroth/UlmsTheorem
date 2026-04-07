@@ -4,7 +4,8 @@ import Lib.PGroups.UlmInvariants
 # Invariance of Ulm data under isomorphism
 
 This module contains the easy direction of Ulm's theorem: isomorphisms preserve
-the Ulm filtration, the induced quotients, and hence the Ulm invariants.
+both the Ulm filtration and the classical `P_α / P_{α+1}` quotients, hence the
+Ulm invariants.
 -/
 
 open Cardinal Ordinal
@@ -62,14 +63,42 @@ lemma ulmSubgroup_map_iso {G H : Type u} [AddCommGroup G] [AddCommGroup H]
         simpa using hxy
       simpa [this] using hx
 
-private noncomputable def ulmSubgroupIso {G H : Type u} [AddCommGroup G] [AddCommGroup H]
-    (φ : G ≃+ H) (α : Ordinal) : ulmSubgroup p α (G := G) ≃+ ulmSubgroup p α (G := H) where
+/-- An isomorphism preserves the filtered p-socle layers `P_α`. -/
+lemma pSocleAt_map_iso {G H : Type u} [AddCommGroup G] [AddCommGroup H]
+    (φ : G ≃+ H) (α : Ordinal) :
+    (pSocleAt p α (G := G)).map φ.toAddMonoidHom = pSocleAt p α (G := H) := by
+  ext y
+  constructor
+  · rintro ⟨x, hx, rfl⟩
+    have hx0 : p • x = 0 := (mem_pSocleAt p α x).1 hx |>.1
+    have hxα : x ∈ ulmSubgroup p α (G := G) := (mem_pSocleAt p α x).1 hx |>.2
+    exact (mem_pSocleAt p α (φ x)).2 ⟨by simpa [map_nsmul] using congrArg φ hx0, by
+      have : φ x ∈ (ulmSubgroup p α (G := G)).map φ.toAddMonoidHom := ⟨x, hxα, rfl⟩
+      rw [ulmSubgroup_map_iso (p := p) φ α] at this
+      exact this⟩
+  · intro hy
+    have hy0 : p • y = 0 := (mem_pSocleAt p α y).1 hy |>.1
+    have hyα : y ∈ ulmSubgroup p α (G := H) := (mem_pSocleAt p α y).1 hy |>.2
+    refine ⟨φ.symm y, (mem_pSocleAt p α (φ.symm y)).2 ⟨?_, ?_⟩, by simp⟩
+    · apply φ.injective
+      simpa [map_nsmul] using hy0
+    · have hy' : y ∈ (ulmSubgroup p α (G := G)).map φ.toAddMonoidHom := by
+        rw [ulmSubgroup_map_iso (p := p) φ α]
+        exact hyα
+      rcases hy' with ⟨x, hx, hxy⟩
+      have : x = φ.symm y := by
+        apply φ.injective
+        simpa using hxy
+      simpa [this] using hx
+
+private noncomputable def pSocleAtIso {G H : Type u} [AddCommGroup G] [AddCommGroup H]
+    (φ : G ≃+ H) (α : Ordinal) : pSocleAt p α (G := G) ≃+ pSocleAt p α (G := H) where
   toFun x := ⟨φ x, by
-    rw [← ulmSubgroup_map_iso (p := p) φ α]
+    rw [← pSocleAt_map_iso (p := p) φ α]
     exact ⟨x, x.prop, rfl⟩⟩
   invFun y := ⟨φ.symm y, by
-    have hy' : (y : H) ∈ (ulmSubgroup p α (G := G)).map φ.toAddMonoidHom := by
-      rw [ulmSubgroup_map_iso (p := p) φ α]
+    have hy' : (y : H) ∈ (pSocleAt p α (G := G)).map φ.toAddMonoidHom := by
+      rw [pSocleAt_map_iso (p := p) φ α]
       exact y.prop
     rcases hy' with ⟨x, hx, hxy⟩
     have : x = φ.symm y := by
@@ -80,25 +109,23 @@ private noncomputable def ulmSubgroupIso {G H : Type u} [AddCommGroup G] [AddCom
   right_inv y := by ext; simp
   map_add' x y := by ext; simp
 
-/-- An isomorphism induces an isomorphism on Ulm quotients. -/
+/-- An isomorphism induces an isomorphism on the classical Ulm quotients. -/
 noncomputable def ulmQuotient_mapIso {G H : Type u} [AddCommGroup G] [AddCommGroup H]
     (φ : G ≃+ H) (α : Ordinal) :
     ulmQuotient p α (G := G) ≃+ ulmQuotient p α (G := H) := by
-  let e := ulmSubgroupIso p φ α
-  let Dg : AddSubgroup (ulmSubgroup p α (G := G)) :=
-    (ulmSubgroup p (Order.succ α) (G := G)).comap (ulmSubgroup p α (G := G)).subtype
-  let Dh : AddSubgroup (ulmSubgroup p α (G := H)) :=
-    (ulmSubgroup p (Order.succ α) (G := H)).comap (ulmSubgroup p α (G := H)).subtype
+  let e := pSocleAtIso p φ α
+  let Dg : AddSubgroup (pSocleAt p α (G := G)) := pSocleAt_succ_subgroupOf p α
+  let Dh : AddSubgroup (pSocleAt p α (G := H)) := pSocleAt_succ_subgroupOf p α
   have hf : Dg ≤ AddSubgroup.comap e.toAddMonoidHom Dh := by
     intro x hx
-    change (φ (x : G) : H) ∈ ulmSubgroup p (Order.succ α) (G := H)
-    rw [← ulmSubgroup_map_iso (p := p) φ (Order.succ α)]
+    change (φ (x : G) : H) ∈ pSocleAt p (Order.succ α) (G := H)
+    rw [← pSocleAt_map_iso (p := p) φ (Order.succ α)]
     exact ⟨x, by simpa [Dg] using hx, rfl⟩
   have hg : Dh ≤ AddSubgroup.comap e.symm.toAddMonoidHom Dg := by
     intro y hy
-    change (φ.symm (y : H) : G) ∈ ulmSubgroup p (Order.succ α) (G := G)
-    have hy' : (y : H) ∈ (ulmSubgroup p (Order.succ α) (G := G)).map φ.toAddMonoidHom := by
-      rw [ulmSubgroup_map_iso (p := p) φ (Order.succ α)]
+    change (φ.symm (y : H) : G) ∈ pSocleAt p (Order.succ α) (G := G)
+    have hy' : (y : H) ∈ (pSocleAt p (Order.succ α) (G := G)).map φ.toAddMonoidHom := by
+      rw [pSocleAt_map_iso (p := p) φ (Order.succ α)]
       simpa [Dh] using hy
     rcases hy' with ⟨x, hx, hxy⟩
     have : x = φ.symm y := by
