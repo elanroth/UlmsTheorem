@@ -15,7 +15,6 @@ We formalize:
    Alvir–Csima–MacLean (ACM).  The main goal is a sharp classification of
    Σ/Π/d-Σ complexity of Scott sentences for groups of Ulm length ω·γ+n,
    including the rigid-tail case f(ω·γ) = … = f(ω·γ+n−2) = 0.
-3. **Index-set complexity** comparison with Calvert's results.
 
 ## Notation
 
