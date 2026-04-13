@@ -215,22 +215,27 @@ lemma mem_ulmSubgroup_zsmul_iff_of_pSocle [Fact p.Prime] {g : G}
     n • g ∈ ulmSubgroup p β (G := G) ↔ g ∈ ulmSubgroup p β (G := G) := by
   constructor
   · intro hmem
-    -- If the name `Int.coprime_iff_nat_coprime` doesn't exist, try
-    -- `Int.isCoprime_iff_gcd_eq_one` + `Int.gcd_eq_natAbs`, or `Nat.Coprime.isCoprime`.
-    obtain ⟨a, b, hab⟩ : IsCoprime n (p : ℤ) := by
-      rw [Int.coprime_iff_nat_coprime]
-      exact Nat.Coprime.symm ((Nat.Prime.coprime_iff_not_dvd Fact.out).2
-        (fun h => hn (by exact_mod_cast h)))
-    have hg_eq : g = a • (n • g) := by
+    -- Get Bezout coefficients via Int.gcd_eq_gcd_ab
+    have hgcd : Int.gcd n (p : ℤ) = 1 := by
+      show n.natAbs.gcd p = 1
+      rw [Nat.gcd_comm]
+      exact (Nat.Prime.coprime_iff_not_dvd Fact.out).2
+        (fun h => hn (by exact_mod_cast h))
+    -- Bezout: n * gcdA + p * gcdB = 1
+    have hbez := Int.gcd_eq_gcd_ab n (p : ℤ)
+    rw [show (Int.gcd n (p : ℤ) : ℤ) = 1 from by exact_mod_cast hgcd] at hbez
+    -- hbez : 1 = n * Int.gcdA n ↑p + ↑p * Int.gcdB n ↑p
+    have hg_eq : g = Int.gcdA n ↑p • (n • g) := by
       calc g = (1 : ℤ) • g := (one_zsmul g).symm
-        _ = (a * n + b * ↑p) • g := by rw [hab]
-        _ = a • (n • g) + b • ((↑p : ℤ) • g) := by
-            rw [add_zsmul, mul_zsmul, mul_zsmul]
-        _ = a • (n • g) + b • (0 : G) := by
-            congr 1; exact_mod_cast hpg
-        _ = a • (n • g) := by simp
+        _ = (n * Int.gcdA n ↑p + ↑p * Int.gcdB n ↑p) • g := by rw [← hbez]
+        _ = Int.gcdA n ↑p • (n • g) + Int.gcdB n ↑p • ((↑p : ℤ) • g) := by
+            rw [add_zsmul, mul_comm n, mul_zsmul, mul_comm (↑p : ℤ), mul_zsmul]
+        _ = Int.gcdA n ↑p • (n • g) + Int.gcdB n ↑p • (0 : G) := by
+            -- (↑p : ℤ) • g = p • g = 0; congr 2 peels off gcdB • (–)
+            congr 2; exact_mod_cast hpg
+        _ = Int.gcdA n ↑p • (n • g) := by simp
     rw [hg_eq]
-    exact (ulmSubgroup p β (G := G)).zsmul_mem hmem a
+    exact (ulmSubgroup p β (G := G)).zsmul_mem hmem (Int.gcdA n ↑p)
   · exact fun hmem => (ulmSubgroup p β (G := G)).zsmul_mem hmem n
 
 lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A)
