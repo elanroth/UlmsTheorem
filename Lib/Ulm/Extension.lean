@@ -312,6 +312,7 @@ lemma socle_extend
     (φ : A →+ B) (hφ : IsHeightPresOn p φ)
     (α : Ordinal) {g : G}
     (hg_socle : g ∈ pSocleAt p α (G := G))
+    (hg_exact : g ∉ ulmSubgroup p (Order.succ α) (G := G))
     (hg_notin : g ∉ A)
     (hpg_in  : p • g ∈ A) :
     ∃ (A' : AddSubgroup G) (hAA' : A ≤ A') (_ : g ∈ A')

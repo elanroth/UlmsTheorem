@@ -200,6 +200,39 @@ lemma IsHeightPresOn.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
     simpa using hred (((x - y : A) : A) : G) hdiv
   exact sub_eq_zero.mp hzero
 
+/-- If `a` is in a subgroup but `b` is not, their sum is not in the subgroup.
+Useful for the ultrametric argument in the extension theorem. -/
+lemma not_mem_of_mem_of_not_mem_add {S : AddSubgroup G} {a b : G}
+    (ha : a ∈ S) (hb : b ∉ S) : a + b ∉ S := by
+  intro hab
+  exact hb (by simpa using S.sub_mem hab ha)
+
+/-- For an element `g` of the `p`-socle (`p • g = 0`), membership of `n • g` in a
+Ulm subgroup is equivalent to membership of `g`, provided `p ∤ n`.
+Proof: Bezout gives `a * n + b * p = 1`, so `g = a • (n • g) + b • (p • g) = a • (n • g)`. -/
+lemma mem_ulmSubgroup_zsmul_iff_of_pSocle [Fact p.Prime] {g : G}
+    (hpg : p • g = 0) {n : ℤ} (hn : ¬ (p : ℤ) ∣ n) (β : Ordinal) :
+    n • g ∈ ulmSubgroup p β (G := G) ↔ g ∈ ulmSubgroup p β (G := G) := by
+  constructor
+  · intro hmem
+    -- If the name `Int.coprime_iff_nat_coprime` doesn't exist, try
+    -- `Int.isCoprime_iff_gcd_eq_one` + `Int.gcd_eq_natAbs`, or `Nat.Coprime.isCoprime`.
+    obtain ⟨a, b, hab⟩ : IsCoprime n (p : ℤ) := by
+      rw [Int.coprime_iff_nat_coprime]
+      exact Nat.Coprime.symm ((Nat.Prime.coprime_iff_not_dvd Fact.out).2
+        (fun h => hn (by exact_mod_cast h)))
+    have hg_eq : g = a • (n • g) := by
+      calc g = (1 : ℤ) • g := (one_zsmul g).symm
+        _ = (a * n + b * ↑p) • g := by rw [hab]
+        _ = a • (n • g) + b • ((↑p : ℤ) • g) := by
+            rw [add_zsmul, mul_zsmul, mul_zsmul]
+        _ = a • (n • g) + b • (0 : G) := by
+            congr 1; exact_mod_cast hpg
+        _ = a • (n • g) := by simp
+    rw [hg_eq]
+    exact (ulmSubgroup p β (G := G)).zsmul_mem hmem a
+  · exact fun hmem => (ulmSubgroup p β (G := G)).zsmul_mem hmem n
+
 lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A)
     (φ : G →+ H) (hφ : IsHeightPreserving p φ) :
     IsPure p (A.map φ) := by
