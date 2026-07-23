@@ -220,7 +220,7 @@ lemma mem_ulmSubgroup_zsmul_iff_of_pSocle [Fact p.Prime] {g : G}
       show n.natAbs.gcd p = 1
       rw [Nat.gcd_comm]
       exact (Nat.Prime.coprime_iff_not_dvd Fact.out).2
-        (fun h => hn (Int.dvd_natAbs.1 (Int.coe_nat_dvd.2 h)))
+        (fun h => hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 h)))
     -- Bezout: n * gcdA + p * gcdB = 1
     have hbez := Int.gcd_eq_gcd_ab n (p : ℤ)
     rw [show (Int.gcd n (p : ℤ) : ℤ) = 1 from by exact_mod_cast hgcd] at hbez

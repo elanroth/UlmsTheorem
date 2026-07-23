@@ -133,7 +133,7 @@ lemma exists_zero (hred' : IsReducedPGroup p G) : ∃ α : Ordinal, ulmSubgroup 
     · refine le_iInf ?_
       intro n
       rw [← ulmSubgroup_nat (p := p) (G := G) n]
-      exact ulmSubgroup_antitone p (Ordinal.nat_lt_omega0 n).le
+      exact ulmSubgroup_antitone p (Ordinal.natCast_lt_omega0 n).le
     · intro x hx
       have hxall : ∀ n : ℕ, x ∈ pPow p (G := G) n := by
         simpa only [AddSubgroup.mem_iInf] using hx
