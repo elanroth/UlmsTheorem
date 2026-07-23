@@ -304,7 +304,7 @@ private lemma bf_forth_back
          fun a => by simpa [h₃ a] using h₆ ⟨a, h₁ a.2⟩⟩
 
 /-- The ℕ-indexed chain of `BFIsoStep`s, covering one element of G and H at each stage. -/
-private def bf_chain
+private noncomputable def bf_chain
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
         ∃ (s' : BFIsoStep p (G := G) (H := H)) (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
           g ∈ s'.A ∧ ∀ a : s.A, (s'.e ⟨a.val, hAA a.prop⟩ : H) = s.e a)
