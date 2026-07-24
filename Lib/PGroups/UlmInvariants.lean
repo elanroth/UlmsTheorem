@@ -118,35 +118,20 @@ noncomputable def ulmInvariant {G : Type*} [AddCommGroup G]
 /-- The Ulm length of a reduced p-group: the least ordinal α at which p^α·G = 0.
     For countable reduced p-groups this is a countable ordinal. -/
 noncomputable def ulmLength {G : Type*} [AddCommGroup G] (_hred : IsReducedPGroup p G) :
-    Ordinal :=
-  sInf {α | ulmSubgroup p α (G := G) = ⊥}
+    Ordinal.{0} :=
+  sInf {α : Ordinal.{0} | ulmSubgroup p α (G := G) = ⊥}
 
 namespace ulmLength
 
 variable {G : Type*} [AddCommGroup G] (hred : IsReducedPGroup p G)
 
-/-- The set {α | p^α·G = 0} is nonempty for a reduced p-group. -/
-lemma exists_zero (hred' : IsReducedPGroup p G) : ∃ α : Ordinal, ulmSubgroup p α (G := G) = ⊥ := by
-  refine ⟨ω, ?_⟩
-  have homega : ulmSubgroup p ω (G := G) = ⨅ n : ℕ, pPow p (G := G) n := by
-    apply le_antisymm
-    · refine le_iInf ?_
-      intro n
-      rw [← ulmSubgroup_nat (p := p) (G := G) n]
-      exact ulmSubgroup_antitone p (Ordinal.natCast_lt_omega0 n).le
-    · intro x hx
-      have hxall : ∀ n : ℕ, x ∈ pPow p (G := G) n := by
-        simpa only [AddSubgroup.mem_iInf] using hx
-      unfold ulmSubgroup
-      rw [Ordinal.limitRecOn_limit _ _ _ _ Ordinal.isSuccLimit_omega0]
-      simp only [AddSubgroup.mem_iInf]
-      intro β hβ
-      obtain ⟨n, rfl⟩ := Ordinal.lt_omega0.1 hβ
-      change x ∈ ulmSubgroup p n (G := G)
-      simpa [ulmSubgroup_nat (p := p) (G := G)] using hxall n
-  rw [homega]
-  exact (isReducedPGroup_iff_iInf (p := p) (G := G)).1 hred'
+omit hp in
+/-- The set `{α | p^α·G = 0}` is nonempty for a reduced p-group. -/
+lemma exists_zero (hred' : IsReducedPGroup p G) :
+    ∃ α : Ordinal.{0}, ulmSubgroup p α (G := G) = ⊥ := by
+  exact hred'.reduced
 
+omit hp in
 /-- p^(ulmLength)·G = 0. -/
 lemma at_ulmLength : ulmSubgroup p (ulmLength p hred) (G := G) = ⊥ :=
   csInf_mem (exists_zero (p := p) (G := G) hred)

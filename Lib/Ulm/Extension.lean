@@ -16,6 +16,99 @@ variable (p : ℕ) [hp : Fact p.Prime]
 variable {G : Type u} [AddCommGroup G]
 variable {H : Type u} [AddCommGroup H]
 
+/-! ## Kaplansky's finite-stage data -/
+
+/-- `x` is proper with respect to `S` when its height is maximal in the coset `x + S`. -/
+def IsProper (S : AddSubgroup G) (x : G) : Prop :=
+  ∀ s : S, ulmHeight p x ≥ ulmHeight p (x + s)
+
+/-- `S_α = S ∩ G_α`. -/
+noncomputable def stageAt (S : AddSubgroup G) (α : Ordinal) : AddSubgroup G :=
+  S ⊓ ulmSubgroup p α
+
+/-- Kaplansky's `S_α* = S_α ∩ p⁻¹G_{α+2}`. -/
+noncomputable def kaplanskyStar (S : AddSubgroup G) (α : Ordinal) : AddSubgroup G where
+  carrier := {x | x ∈ S ∧ x ∈ ulmSubgroup p α ∧
+    p • x ∈ ulmSubgroup p (Order.succ (Order.succ α))}
+  zero_mem' := by simp
+  add_mem' := by
+    rintro x y ⟨hxS, hxα, hpx⟩ ⟨hyS, hyα, hpy⟩
+    exact ⟨S.add_mem hxS hyS, (ulmSubgroup p α).add_mem hxα hyα, by
+      rw [smul_add]
+      exact (ulmSubgroup p (Order.succ (Order.succ α))).add_mem hpx hpy⟩
+  neg_mem' := by
+    rintro x ⟨hxS, hxα, hpx⟩
+    exact ⟨S.neg_mem hxS, (ulmSubgroup p α).neg_mem hxα, by
+      rw [smul_neg]
+      exact (ulmSubgroup p (Order.succ (Order.succ α))).neg_mem hpx⟩
+
+/-- `S_{α+1}` is contained in `S_α*`. -/
+lemma stageAt_succ_le_kaplanskyStar (S : AddSubgroup G) (α : Ordinal) :
+    stageAt p S (Order.succ α) ≤ kaplanskyStar p S α := by
+  intro x hx
+  have hxS : x ∈ S := hx.1
+  have hxα1 : x ∈ ulmSubgroup p (Order.succ α) := hx.2
+  have hxα : x ∈ ulmSubgroup p α :=
+    ulmSubgroup_antitone p (Order.le_succ α) hxα1
+  refine ⟨hxS, hxα, ?_⟩
+  rw [ulmSubgroup_succ]
+  exact ⟨x, hxα1, rfl⟩
+
+/-- `S_{α+1}` viewed as a subgroup of `S_α*`. -/
+noncomputable def stageAtSuccInStar (S : AddSubgroup G) (α : Ordinal) :
+    AddSubgroup (kaplanskyStar p S α) :=
+  (stageAt p S (Order.succ α)).comap (kaplanskyStar p S α).subtype
+
+/-- The source quotient in Kaplansky's relative-Ulm map. -/
+noncomputable def kaplanskyDomainQuotient (S : AddSubgroup G) (α : Ordinal) : Type u :=
+  kaplanskyStar p S α ⧸ stageAtSuccInStar p S α
+
+noncomputable instance (S : AddSubgroup G) (α : Ordinal) :
+    AddCommGroup (kaplanskyDomainQuotient p S α) := by
+  unfold kaplanskyDomainQuotient
+  infer_instance
+
+/-- Kaplansky's range lemma, the central relative ingredient in the one-generator
+extension argument.  The map sends a class represented by `x ∈ S_α*` to the class of
+`x-y` in `P_α/P_{α+1}`, where `py = px` and `y ∈ G_{α+1}`.
+
+The construction and independence of the choice of `y` are the genuine remaining
+formalization task.  Its range is proper exactly when an exact-height-`α` socle element
+proper with respect to `S` exists. -/
+lemma kaplansky_range_lemma (S : AddSubgroup G) (α : Ordinal) :
+    ∃ U : kaplanskyDomainQuotient p S α →+
+        ulmQuotient p α (G := G),
+      Function.Injective U ∧
+      (¬ Function.Surjective U ↔
+        ∃ v : G, v ∈ pSocleAt p α (G := G) ∧
+          v ∉ ulmSubgroup p (Order.succ α) (G := G) ∧
+          IsProper p S v) := by
+  sorry
+
+/-- A finite height-preserving partial isomorphism, as used in Kaplansky's proof.
+
+The stages are deliberately finite, not finitely generated pure subgroups.  Requiring
+purity would make it impossible to cover a nonzero element of `G_ω`. -/
+structure UlmStage where
+  A : AddSubgroup G
+  B : AddSubgroup H
+  hAfinite : Set.Finite (A : Set G)
+  hBfinite : Set.Finite (B : Set H)
+  e : A ≃+ B
+  hφ : IsHeightPresOn p e.toAddMonoidHom
+
+/-- Reverse a finite partial isomorphism. -/
+noncomputable def UlmStage.symm (s : UlmStage p (G := G) (H := H)) :
+    UlmStage p (G := H) (H := G) where
+  A := s.B
+  B := s.A
+  hAfinite := s.hBfinite
+  hBfinite := s.hAfinite
+  e := s.e.symm
+  hφ := by
+    intro b α
+    simpa using (s.hφ (s.e.symm b) α).symm
+
 omit hp in
  /-- Trivial extension when the prescribed generator is already in the domain subgroup. -/
 lemma extend_by_one_of_mem
@@ -303,57 +396,18 @@ lemma extend_well_defined
       congr 1
       abel
 
-/-- Socle-step extension of a height-preserving partial map. -/
-lemma socle_extend
+/-- Kaplansky's one-generator extension lemma.
+
+Starting from finite subgroups related by a height-preserving isomorphism, extend the
+stage to cover a prescribed source element.  The natural-language proof first chooses
+a proper representative with maximal `h(px)`, then uses `kaplansky_range_lemma` in its
+second case. -/
+lemma kaplansky_extend
     (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
     (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
-    {A : AddSubgroup G} (hA : IsPure p A) (hAfg : A.FG)
-    {B : AddSubgroup H} (hB : IsPure p B)
-    (φ : A →+ B) (hφ : IsHeightPresOn p φ)
-    (α : Ordinal) {g : G}
-    (hg_socle : g ∈ pSocleAt p α (G := G))
-    (hg_exact : g ∉ ulmSubgroup p (Order.succ α) (G := G))
-    (hg_notin : g ∉ A)
-    (hpg_in  : p • g ∈ A) :
-    ∃ (A' : AddSubgroup G) (hAA' : A ≤ A') (_ : g ∈ A')
-      (h : H) (_ : h ∈ pSocleAt p α (G := H))
-      (_ : p • h = (φ ⟨p • g, hpg_in⟩ : H))
-      (B' : AddSubgroup H) (_ : IsPure p B') (_ : B ≤ B') (_ : h ∈ B')
-      (φ' : A' →+ B'),
-        IsHeightPresOn p φ' ∧
-        ∀ a : A, (φ' ⟨a, hAA' a.prop⟩ : H) = φ a := by
+    (s : UlmStage p (G := G) (H := H)) (g : G) :
+    ∃ (s' : UlmStage p (G := G) (H := H))
+      (hAA : s.A ≤ s'.A) (hBB : s.B ≤ s'.B),
+      g ∈ s'.A ∧
+      ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
   sorry
-
-/-- General extension by one generator. -/
-lemma extend_by_one
-    (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
-    (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
-    {A : AddSubgroup G} (hA : IsPure p A) (hAfg : A.FG)
-    {B : AddSubgroup H} (hB : IsPure p B)
-    (φ : A →+ B) (hφ : IsHeightPresOn p φ)
-    (g : G) :
-    ∃ (A' : AddSubgroup G) (hAA' : A ≤ A') (_ : g ∈ A')
-      (B' : AddSubgroup H) (_ : IsPure p B') (_ : B ≤ B')
-      (φ' : A' →+ B'),
-        IsHeightPresOn p φ' ∧
-        ∀ a : A, (φ' ⟨a, hAA' a.prop⟩ : H) = φ a := by
-  by_cases hg : g ∈ A
-  · exact extend_by_one_of_mem (p := p) hB φ hφ hg
-  · sorry
-
-/-- General finite-stage extension by one generator. -/
-lemma extend_by_one_fg
-    (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
-    (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
-    {A : AddSubgroup G} (hA : IsPure p A) (hAfg : A.FG)
-    {B : AddSubgroup H} (hB : IsPure p B) (hBfg : B.FG)
-    (φ : A →+ B) (hφ : IsHeightPresOn p φ)
-    (g : G) :
-    ∃ (A' : AddSubgroup G) (_ : IsPure p A') (_ : A'.FG) (hAA' : A ≤ A') (_ : g ∈ A')
-      (B' : AddSubgroup H) (_ : IsPure p B') (_ : B'.FG) (_ : B ≤ B')
-      (φ' : A' →+ B'),
-        IsHeightPresOn p φ' ∧
-        ∀ a : A, (φ' ⟨a, hAA' a.prop⟩ : H) = φ a := by
-  by_cases hg : g ∈ A
-  · exact extend_by_one_fg_of_mem (p := p) hA hAfg hB hBfg φ hφ hg
-  · sorry

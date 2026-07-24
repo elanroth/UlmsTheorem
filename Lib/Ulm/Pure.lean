@@ -176,28 +176,23 @@ lemma IsHeightPreserving.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
     {φ : G →+ H} (hφ : IsHeightPreserving p φ) :
     Function.Injective φ := by
   intro x y hxy
-  have hdiv : ∀ n : ℕ, ∃ z : G, p ^ n • z = x - y := by
-    intro n
-    have hmem : x - y ∈ ulmSubgroup p (n : Ordinal) (G := G) := by
-      exact (hφ (x - y) (n : Ordinal)).mpr (by
-        simp [hxy])
-    rw [ulmSubgroup_nat (p := p) (G := G) n] at hmem
-    exact (pPow_mem_iff p (x - y) n).mp hmem
-  exact sub_eq_zero.mp (hred (x - y) hdiv)
+  rcases hred.reduced with ⟨α, hα⟩
+  have hmem : x - y ∈ ulmSubgroup p α (G := G) :=
+    (hφ (x - y) α).mpr (by simp [hxy])
+  rw [hα] at hmem
+  exact sub_eq_zero.mp (AddSubgroup.mem_bot.mp hmem)
 
 lemma IsHeightPresOn.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
     {A : AddSubgroup G} {B : AddSubgroup H} {φ : A →+ B} (hφ : IsHeightPresOn p φ) :
     Function.Injective φ := by
   intro x y hxy
   apply Subtype.ext
-  have hdiv : ∀ n : ℕ, ∃ z : G, p ^ n • z = ((x : G) - y : G) := by
-    intro n
-    have hmem : (((x - y : A) : A) : G) ∈ ulmSubgroup p (n : Ordinal) (G := G) := by
-      exact (hφ (x - y) (n : Ordinal)).mpr (by simp [hxy])
-    rw [ulmSubgroup_nat (p := p) (G := G) n] at hmem
-    simpa using (pPow_mem_iff p (((x - y : A) : A) : G) n).mp hmem
-  have hzero : ((x : G) - y : G) = 0 := by
-    simpa using hred (((x - y : A) : A) : G) hdiv
+  rcases hred.reduced with ⟨α, hα⟩
+  have hmem : (((x - y : A) : A) : G) ∈ ulmSubgroup p α (G := G) :=
+    (hφ (x - y) α).mpr (by simp [hxy])
+  rw [hα] at hmem
+  have hzero : ((x : G) - y : G) = 0 :=
+    AddSubgroup.mem_bot.mp hmem
   exact sub_eq_zero.mp hzero
 
 /-- If `a` is in a subgroup but `b` is not, their sum is not in the subgroup.
