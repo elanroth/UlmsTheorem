@@ -68,14 +68,360 @@ noncomputable instance (S : AddSubgroup G) (α : Ordinal) :
   unfold kaplanskyDomainQuotient
   infer_instance
 
+/-- Every class in Kaplansky's source quotient is killed by `p`. -/
+lemma kaplanskyDomainQuotient_orderOf_dvd_p
+    (S : AddSubgroup G) (α : Ordinal)
+    (x : kaplanskyDomainQuotient p S α) :
+    p • x = 0 := by
+  refine Quotient.inductionOn x ?_
+  intro a
+  change QuotientAddGroup.mk' (stageAtSuccInStar p S α) (p • a) =
+    QuotientAddGroup.mk' (stageAtSuccInStar p S α) 0
+  apply (QuotientAddGroup.mk'_eq_mk' _).2
+  refine ⟨-(p • a), ?_, by simp⟩
+  change (-(p • (a : G))) ∈ stageAt p S (Order.succ α)
+  refine ⟨S.neg_mem (S.nsmul_mem a.property.1 p), ?_⟩
+  apply (ulmSubgroup p (Order.succ α)).neg_mem
+  exact ulmSubgroup_antitone p (Order.le_succ (Order.succ α)) a.property.2.2
+
+noncomputable instance kaplanskyDomainQuotient_module
+    (S : AddSubgroup G) (α : Ordinal) :
+    Module (ZMod p) (kaplanskyDomainQuotient p S α) := by
+  classical
+  refine AddCommGroup.zmodModule (n := p) (G := kaplanskyDomainQuotient p S α) ?_
+  intro x
+  exact kaplanskyDomainQuotient_orderOf_dvd_p p S α x
+
+/-- An additive Kaplansky map is automatically `ZMod p`-linear. -/
+noncomputable def kaplanskyLinearMap
+    (S : AddSubgroup G) (α : Ordinal)
+    (U : kaplanskyDomainQuotient p S α →+ ulmQuotient p α (G := G)) :
+    kaplanskyDomainQuotient p S α →ₗ[ZMod p] ulmQuotient p α (G := G) :=
+  U.toZModLinearMap p
+
+/-- The occupied part of the Ulm layer: the range of a Kaplansky map. -/
+noncomputable def kaplanskyOccupiedSubmodule
+    (S : AddSubgroup G) (α : Ordinal)
+    (U : kaplanskyDomainQuotient p S α →+ ulmQuotient p α (G := G)) :
+    Submodule (ZMod p) (ulmQuotient p α (G := G)) :=
+  LinearMap.range (kaplanskyLinearMap p S α U)
+
+/-- The remaining room in the Ulm layer, after quotienting by the occupied range. -/
+abbrev kaplanskyRoomQuotient
+    (S : AddSubgroup G) (α : Ordinal)
+    (U : kaplanskyDomainQuotient p S α →+ ulmQuotient p α (G := G)) : Type _ :=
+  ulmQuotient p α (G := G) ⧸ kaplanskyOccupiedSubmodule p S α U
+
+/-- The dimension of the unoccupied quotient of the Ulm layer. -/
+noncomputable def kaplanskyRoomInvariant
+    (S : AddSubgroup G) (α : Ordinal)
+    (U : kaplanskyDomainQuotient p S α →+ ulmQuotient p α (G := G)) :
+    Cardinal :=
+  Module.rank (ZMod p) (kaplanskyRoomQuotient p S α U)
+
+/-- Rank bookkeeping for Kaplansky's map:
+`room + occupied = the ordinary Ulm invariant`. -/
+theorem kaplansky_room_equation
+    (S : AddSubgroup G) (α : Ordinal)
+    (U : kaplanskyDomainQuotient p S α →+ ulmQuotient p α (G := G)) :
+    kaplanskyRoomInvariant p S α U +
+        Module.rank (ZMod p) (kaplanskyOccupiedSubmodule p S α U) =
+      ulmInvariant p α (G := G) := by
+  exact Submodule.rank_quotient_add_rank (kaplanskyOccupiedSubmodule p S α U)
+
+/-- “Not onto means room”: a Kaplansky map fails to be surjective exactly when
+its room quotient is nontrivial. -/
+theorem kaplansky_not_surjective_iff_room
+    (S : AddSubgroup G) (α : Ordinal)
+    (U : kaplanskyDomainQuotient p S α →+ ulmQuotient p α (G := G)) :
+    ¬ Function.Surjective U ↔ Nontrivial (kaplanskyRoomQuotient p S α U) := by
+  rw [Submodule.Quotient.nontrivial_iff]
+  change (¬ Function.Surjective U) ↔
+    LinearMap.range (kaplanskyLinearMap p S α U) ≠ ⊤
+  rw [ne_eq, LinearMap.range_eq_top]
+  rfl
+
+/-- A chosen correction one level higher, with the same `p`-multiple as an
+element of `S_α*`.  The eventual quotient class is independent of this choice. -/
+lemma exists_kaplanskyCorrection
+    (S : AddSubgroup G) (α : Ordinal) (x : kaplanskyStar p S α) :
+    ∃ y : G, y ∈ ulmSubgroup p (Order.succ α) ∧ p • y = p • (x : G) := by
+  have hx := x.property.2.2
+  rw [ulmSubgroup_succ] at hx
+  exact hx
+
+noncomputable def kaplanskyCorrection
+    (S : AddSubgroup G) (α : Ordinal) (x : kaplanskyStar p S α) : G :=
+  Classical.choose (exists_kaplanskyCorrection p S α x)
+
+lemma kaplanskyCorrection_mem
+    (S : AddSubgroup G) (α : Ordinal) (x : kaplanskyStar p S α) :
+    kaplanskyCorrection p S α x ∈ ulmSubgroup p (Order.succ α) :=
+  (Classical.choose_spec (exists_kaplanskyCorrection p S α x)).1
+
+lemma kaplanskyCorrection_smul
+    (S : AddSubgroup G) (α : Ordinal) (x : kaplanskyStar p S α) :
+    p • kaplanskyCorrection p S α x = p • (x : G) :=
+  (Classical.choose_spec (exists_kaplanskyCorrection p S α x)).2
+
+/-- The order-`p` representative `x-y ∈ P_α` used in Kaplansky's map. -/
+noncomputable def kaplanskySocleRep
+    (S : AddSubgroup G) (α : Ordinal) (x : kaplanskyStar p S α) :
+    pSocleAt p α (G := G) := by
+  refine ⟨(x : G) - kaplanskyCorrection p S α x, ?_⟩
+  rw [mem_pSocleAt]
+  constructor
+  · rw [smul_sub, kaplanskyCorrection_smul]
+    simp
+  · exact (ulmSubgroup p α).sub_mem x.property.2.1
+      (ulmSubgroup_antitone p (Order.le_succ α)
+        (kaplanskyCorrection_mem p S α x))
+
+/-- The pre-quotient Kaplansky homomorphism on `S_α*`. -/
+noncomputable def kaplanskyPreMap
+    (S : AddSubgroup G) (α : Ordinal) :
+    kaplanskyStar p S α →+ ulmQuotient p α (G := G) where
+  toFun x := (ulmDenSubmodule p α).mkQ (kaplanskySocleRep p S α x)
+  map_zero' := by
+    apply (Submodule.Quotient.mk_eq_zero _).2
+    change (kaplanskySocleRep p S α 0 : G) ∈
+      pSocleAt p (Order.succ α) (G := G)
+    rw [mem_pSocleAt]
+    refine ⟨(kaplanskySocleRep p S α 0).property.1, ?_⟩
+    change (0 : G) - kaplanskyCorrection p S α 0 ∈
+      ulmSubgroup p (Order.succ α)
+    simpa using (ulmSubgroup p (Order.succ α)).neg_mem
+      (kaplanskyCorrection_mem p S α 0)
+  map_add' x y := by
+    rw [← LinearMap.map_add]
+    apply (Submodule.Quotient.eq _).2
+    change ((kaplanskySocleRep p S α (x + y) -
+      (kaplanskySocleRep p S α x + kaplanskySocleRep p S α y) :
+        pSocleAt p α (G := G)) : G) ∈
+      pSocleAt p (Order.succ α) (G := G)
+    rw [mem_pSocleAt]
+    refine ⟨by
+      have h := (kaplanskySocleRep p S α (x + y) -
+        (kaplanskySocleRep p S α x + kaplanskySocleRep p S α y)).property
+      exact h.1, ?_⟩
+    change ((x : G) + y - kaplanskyCorrection p S α (x + y)) -
+        (((x : G) - kaplanskyCorrection p S α x) +
+          ((y : G) - kaplanskyCorrection p S α y)) ∈
+      ulmSubgroup p (Order.succ α)
+    have hx := kaplanskyCorrection_mem p S α x
+    have hy := kaplanskyCorrection_mem p S α y
+    have hxy := kaplanskyCorrection_mem p S α (x + y)
+    have hmem :
+        kaplanskyCorrection p S α x + kaplanskyCorrection p S α y -
+            kaplanskyCorrection p S α (x + y) ∈
+          ulmSubgroup p (Order.succ α) :=
+      (ulmSubgroup p (Order.succ α)).sub_mem
+        ((ulmSubgroup p (Order.succ α)).add_mem hx hy) hxy
+    convert hmem using 1 <;> abel
+
+/-- Kaplansky's canonical linear map `S_α*/S_(α+1) → P_α/P_(α+1)`. -/
+noncomputable def kaplanskyMap
+    (S : AddSubgroup G) (α : Ordinal) :
+    kaplanskyDomainQuotient p S α →+
+      ulmQuotient p α (G := G) :=
+  QuotientAddGroup.lift (stageAtSuccInStar p S α)
+    (kaplanskyPreMap p S α) (by
+      intro x hx
+      rw [AddMonoidHom.mem_ker]
+      apply (Submodule.Quotient.mk_eq_zero _).2
+      change (kaplanskySocleRep p S α x : G) ∈
+        pSocleAt p (Order.succ α) (G := G)
+      rw [mem_pSocleAt]
+      refine ⟨(kaplanskySocleRep p S α x).property.1, ?_⟩
+      exact (ulmSubgroup p (Order.succ α)).sub_mem hx.2
+        (kaplanskyCorrection_mem p S α x))
+
+theorem kaplanskyMap_injective
+    (S : AddSubgroup G) (α : Ordinal) :
+    Function.Injective (kaplanskyMap p S α) := by
+  apply (AddMonoidHom.ker_eq_bot_iff (kaplanskyMap p S α)).1
+  ext x
+  change (kaplanskyMap p S α) x = 0 ↔ x = 0
+  refine Quotient.inductionOn x ?_
+  intro a
+  constructor
+  · intro ha
+    simp only [kaplanskyMap, QuotientAddGroup.lift_mk] at ha
+    have hrep : (kaplanskySocleRep p S α a : G) ∈
+        pSocleAt p (Order.succ α) (G := G) := by
+      exact (Submodule.Quotient.mk_eq_zero _).1 ha
+    apply (QuotientAddGroup.eq_zero_iff _).2
+    change (a : G) ∈ stageAt p S (Order.succ α)
+    refine ⟨a.property.1, ?_⟩
+    have ha :
+        (a : G) =
+          (kaplanskySocleRep p S α a : G) +
+            kaplanskyCorrection p S α a := by
+      change (a : G) =
+        ((a : G) - kaplanskyCorrection p S α a) +
+          kaplanskyCorrection p S α a
+      abel
+    rw [ha]
+    exact (ulmSubgroup p (Order.succ α)).add_mem hrep.2
+      (kaplanskyCorrection_mem p S α a)
+  · intro ha
+    rw [ha]
+    exact map_zero (kaplanskyMap p S α)
+
+/-- The canonical Kaplansky map occupies exactly
+`((S + G_(α+1)) ∩ P_α) / P_(α+1)` in the ordinary Ulm layer. -/
+theorem kaplanskyMap_range
+    (S : AddSubgroup G) (α : Ordinal) :
+    LinearMap.range (kaplanskyLinearMap p S α (kaplanskyMap p S α)) =
+      relativeOccupiedSubmodule p S α := by
+  ext z
+  constructor
+  · rintro ⟨q, rfl⟩
+    refine Quotient.inductionOn q ?_
+    intro a
+    change (ulmDenSubmodule p α).mkQ (kaplanskySocleRep p S α a) ∈
+      relativeOccupiedSubmodule p S α
+    apply (Submodule.mem_map).2
+    refine ⟨kaplanskySocleRep p S α a, ?_, rfl⟩
+    change (kaplanskySocleRep p S α a : G) ∈
+      pSocleAt p α ⊓ (S ⊔ ulmSubgroup p (Order.succ α))
+    refine ⟨(kaplanskySocleRep p S α a).property, ?_⟩
+    change (a : G) - kaplanskyCorrection p S α a ∈
+      S ⊔ ulmSubgroup p (Order.succ α)
+    simpa [sub_eq_add_neg] using AddSubgroup.add_mem_sup a.property.1
+      ((ulmSubgroup p (Order.succ α)).neg_mem
+        (kaplanskyCorrection_mem p S α a))
+  · intro hz
+    obtain ⟨v, hv, rfl⟩ := (Submodule.mem_map).1 hz
+    change (v : G) ∈ pSocleAt p α ⊓
+      (S ⊔ ulmSubgroup p (Order.succ α)) at hv
+    obtain ⟨s, hs, g, hg, hsg⟩ := AddSubgroup.mem_sup.mp hv.2
+    have hs_eq : s = (v : G) - g := by
+      rw [← hsg]
+      abel
+    let a : kaplanskyStar p S α := ⟨s, hs, by
+      rw [hs_eq]
+      exact (ulmSubgroup p α).sub_mem v.property.2
+        (ulmSubgroup_antitone p (Order.le_succ α) hg), by
+      rw [hs_eq, smul_sub]
+      have hvp : p • (v : G) = 0 := v.property.1
+      rw [hvp]
+      have hpg : p • g ∈ ulmSubgroup p (Order.succ (Order.succ α)) := by
+        rw [ulmSubgroup_succ]
+        exact ⟨g, hg, rfl⟩
+      simpa only [_root_.zero_sub] using
+        (ulmSubgroup p (Order.succ (Order.succ α))).neg_mem hpg⟩
+    refine ⟨(QuotientAddGroup.mk' (stageAtSuccInStar p S α)) a, ?_⟩
+    change (ulmDenSubmodule p α).mkQ (kaplanskySocleRep p S α a) =
+      (ulmDenSubmodule p α).mkQ v
+    apply (Submodule.Quotient.eq _).2
+    change ((kaplanskySocleRep p S α a - v :
+      pSocleAt p α (G := G)) : G) ∈
+        pSocleAt p (Order.succ α) (G := G)
+    rw [mem_pSocleAt]
+    refine ⟨(kaplanskySocleRep p S α a - v).property.1, ?_⟩
+    have hc := kaplanskyCorrection_mem p S α a
+    have hsum :
+        -kaplanskyCorrection p S α a - g ∈
+          ulmSubgroup p (Order.succ α) :=
+      (ulmSubgroup p (Order.succ α)).sub_mem
+        ((ulmSubgroup p (Order.succ α)).neg_mem hc) hg
+    change (s - kaplanskyCorrection p S α a) - (v : G) ∈
+      ulmSubgroup p (Order.succ α)
+    rw [← hsg]
+    convert hsum using 1 <;> abel
+
+/-- The relative Ulm quotient is nontrivial exactly when there is a proper
+order-`p` representative of exact height `α`. -/
+theorem relativeUlmQuotient_nontrivial_iff_proper
+    (S : AddSubgroup G) (α : Ordinal.{0}) :
+    Nontrivial (relativeUlmQuotient p S α) ↔
+      ∃ v : G, v ∈ pSocleAt p α (G := G) ∧
+        v ∉ ulmSubgroup p (Order.succ α) (G := G) ∧
+        IsProper p S v := by
+  constructor
+  · intro hroom
+    rw [Submodule.Quotient.nontrivial_iff] at hroom
+    obtain ⟨v, _, hv⟩ :=
+      SetLike.exists_of_lt (lt_top_iff_ne_top.mpr hroom)
+    have hv' : (v : G) ∉
+        pSocleAt p α ⊓ (S ⊔ ulmSubgroup p (Order.succ α)) := by
+      exact hv
+    have hvSucc : (v : G) ∉ ulmSubgroup p (Order.succ α) := by
+      intro hvs
+      exact hv' ⟨v.property, AddSubgroup.mem_sup_right hvs⟩
+    refine ⟨v, v.property, hvSucc, ?_⟩
+    intro s
+    apply ulmHeight_le_of_mem_imp p ((v : G) + s) v
+    intro β hvsum
+    by_cases hβα : β ≤ α
+    · exact ulmSubgroup_antitone p hβα v.property.2
+    · have hsucc : Order.succ α ≤ β :=
+        Order.succ_le_iff.mpr (lt_of_not_ge hβα)
+      have hvsumSucc :
+          (v : G) + s ∈ ulmSubgroup p (Order.succ α) :=
+        ulmSubgroup_antitone p hsucc hvsum
+      exfalso
+      apply hv'
+      refine ⟨v.property, ?_⟩
+      have heq : (v : G) = (-s : G) + ((v : G) + s) := by
+        abel
+      rw [heq]
+      exact AddSubgroup.add_mem_sup (S.neg_mem s.property) hvsumSucc
+  · rintro ⟨v, hvP, hvSucc, hvProper⟩
+    rw [Submodule.Quotient.nontrivial_iff]
+    intro htop
+    let vP : pSocleAt p α (G := G) := ⟨v, hvP⟩
+    have hvden : vP ∈ relativeUlmSubmodule p S α := by
+      rw [htop]
+      trivial
+    change v ∈ pSocleAt p α ⊓
+      (S ⊔ ulmSubgroup p (Order.succ α)) at hvden
+    obtain ⟨s, hs, g, hg, hsg⟩ := AddSubgroup.mem_sup.mp hvden.2
+    have hproper := hvProper ⟨-s, S.neg_mem hs⟩
+    have heq : v + -s = g := by
+      rw [← hsg]
+      abel
+    rw [heq, ulmHeight_eq_of_mem_not_mem_succ p v α hvP.2 hvSucc] at hproper
+    have hsuccHeight :
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤ ulmHeight p g :=
+      coe_le_ulmHeight_of_mem p g (Order.succ α) hg
+    have hbad :
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+          (α : WithTop Ordinal.{0}) :=
+      hsuccHeight.trans hproper
+    exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
+
+/-- Canonical form of Kaplansky's range lemma: his specified map is not onto
+exactly when there is an exact-height-`α` socle element proper over `S`. -/
+theorem kaplanskyMap_not_surjective_iff_proper
+    (S : AddSubgroup G) (α : Ordinal.{0}) :
+    ¬ Function.Surjective (kaplanskyMap p S α) ↔
+      ∃ v : G, v ∈ pSocleAt p α (G := G) ∧
+        v ∉ ulmSubgroup p (Order.succ α) (G := G) ∧
+        IsProper p S v := by
+  rw [kaplansky_not_surjective_iff_room p S α (kaplanskyMap p S α)]
+  rw [Submodule.Quotient.nontrivial_iff]
+  change LinearMap.range
+      (kaplanskyLinearMap p S α (kaplanskyMap p S α)) ≠ ⊤ ↔ _
+  rw [kaplanskyMap_range p S α]
+  rw [← Submodule.Quotient.nontrivial_iff]
+  have hroom :
+      Nontrivial (ulmQuotient p α (G := G) ⧸ relativeOccupiedSubmodule p S α) ↔
+        Nontrivial (relativeUlmQuotient p S α) := by
+    constructor
+    · intro h
+      letI := h
+      exact (occupiedQuotientEquivRelative p S α).symm.toEquiv.nontrivial
+    · intro h
+      letI := h
+      exact (occupiedQuotientEquivRelative p S α).toEquiv.nontrivial
+  exact hroom.trans (relativeUlmQuotient_nontrivial_iff_proper p S α)
+
 /-- Kaplansky's range lemma, the central relative ingredient in the one-generator
 extension argument.  The map sends a class represented by `x ∈ S_α*` to the class of
-`x-y` in `P_α/P_{α+1}`, where `py = px` and `y ∈ G_{α+1}`.
-
-The construction and independence of the choice of `y` are the genuine remaining
-formalization task.  Its range is proper exactly when an exact-height-`α` socle element
-proper with respect to `S` exists. -/
-lemma kaplansky_range_lemma (S : AddSubgroup G) (α : Ordinal) :
+`x-y` in `P_α/P_{α+1}`, where `py = px` and `y ∈ G_{α+1}`. -/
+lemma kaplansky_range_lemma (S : AddSubgroup G) (α : Ordinal.{0}) :
     ∃ U : kaplanskyDomainQuotient p S α →+
         ulmQuotient p α (G := G),
       Function.Injective U ∧
@@ -83,7 +429,8 @@ lemma kaplansky_range_lemma (S : AddSubgroup G) (α : Ordinal) :
         ∃ v : G, v ∈ pSocleAt p α (G := G) ∧
           v ∉ ulmSubgroup p (Order.succ α) (G := G) ∧
           IsProper p S v) := by
-  sorry
+  exact ⟨kaplanskyMap p S α, kaplanskyMap_injective p S α,
+    kaplanskyMap_not_surjective_iff_proper p S α⟩
 
 /-- A finite height-preserving partial isomorphism, as used in Kaplansky's proof.
 
@@ -108,6 +455,209 @@ noncomputable def UlmStage.symm (s : UlmStage p (G := G) (H := H)) :
   hφ := by
     intro b α
     simpa using (s.hφ (s.e.symm b) α).symm
+
+/-- A height-preserving stage isomorphism identifies Kaplansky's starred
+subgroups on the two sides. -/
+noncomputable def kaplanskyStarEquiv
+    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    kaplanskyStar p s.A α ≃+ kaplanskyStar p s.B α where
+  toFun x := by
+    refine ⟨(s.e ⟨(x : G), x.property.1⟩ : H), ?_⟩
+    refine ⟨(s.e ⟨(x : G), x.property.1⟩).prop,
+      (s.hφ ⟨(x : G), x.property.1⟩ α).mp x.property.2.1, ?_⟩
+    have hpxA : p • (x : G) ∈ s.A := s.A.nsmul_mem x.property.1 p
+    have hmap :
+        p • (s.e ⟨(x : G), x.property.1⟩ : H) =
+          (s.e ⟨p • (x : G), hpxA⟩ : H) := by
+      exact
+        (congrArg Subtype.val
+          (map_nsmul s.e p ⟨(x : G), x.property.1⟩)).symm
+    rw [hmap]
+    exact
+      (s.hφ ⟨p • (x : G), hpxA⟩
+        (Order.succ (Order.succ α))).mp x.property.2.2
+  invFun y := by
+    refine ⟨(s.e.symm ⟨(y : H), y.property.1⟩ : G), ?_⟩
+    have heinv :
+        s.e (s.e.symm ⟨(y : H), y.property.1⟩) =
+          ⟨(y : H), y.property.1⟩ := s.e.apply_symm_apply _
+    refine ⟨(s.e.symm ⟨(y : H), y.property.1⟩).prop, ?_, ?_⟩
+    · apply (s.hφ (s.e.symm ⟨(y : H), y.property.1⟩) α).mpr
+      simpa [heinv] using y.property.2.1
+    ·
+      have hpxA :
+          p • (s.e.symm ⟨(y : H), y.property.1⟩ : G) ∈ s.A :=
+        s.A.nsmul_mem (s.e.symm ⟨(y : H), y.property.1⟩).prop p
+      apply
+        (s.hφ
+          ⟨p • (s.e.symm ⟨(y : H), y.property.1⟩ : G), hpxA⟩
+          (Order.succ (Order.succ α))).mpr
+      have hmap :
+          (s.e
+            ⟨p • (s.e.symm ⟨(y : H), y.property.1⟩ : G), hpxA⟩ : H) =
+            p • (y : H) := by
+        calc
+          (s.e
+              ⟨p • (s.e.symm ⟨(y : H), y.property.1⟩ : G), hpxA⟩ : H) =
+              p • (s.e (s.e.symm ⟨(y : H), y.property.1⟩) : H) := by
+                exact congrArg Subtype.val
+                  (map_nsmul s.e
+                    p (s.e.symm ⟨(y : H), y.property.1⟩))
+          _ = p • (y : H) := by
+                rw [congrArg Subtype.val heinv]
+      simpa [hmap] using y.property.2.2
+  left_inv x := by
+    ext
+    simp
+  right_inv y := by
+    ext
+    simp
+  map_add' x y := by
+    ext
+    simpa using congrArg Subtype.val
+      (s.e.map_add ⟨(x : G), x.property.1⟩ ⟨(y : G), y.property.1⟩)
+
+omit hp in
+lemma kaplanskyStarEquiv_map_stageAtSucc
+    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    (stageAtSuccInStar p s.A α).map
+        (kaplanskyStarEquiv p s α).toAddMonoidHom =
+      stageAtSuccInStar p s.B α := by
+  ext y
+  constructor
+  · rintro ⟨x, hx, rfl⟩
+    change
+      ((kaplanskyStarEquiv p s α x : kaplanskyStar p s.B α) : H) ∈
+        stageAt p s.B (Order.succ α)
+    change (x : G) ∈ stageAt p s.A (Order.succ α) at hx
+    refine ⟨(kaplanskyStarEquiv p s α x).property.1, ?_⟩
+    change
+      (s.e ⟨(x : G), x.property.1⟩ : H) ∈
+        ulmSubgroup p (Order.succ α)
+    exact (s.hφ ⟨(x : G), x.property.1⟩ (Order.succ α)).mp hx.2
+  · intro hy
+    let x : kaplanskyStar p s.A α :=
+      (kaplanskyStarEquiv p s α).symm y
+    refine ⟨x, ?_, (kaplanskyStarEquiv p s α).apply_symm_apply y⟩
+    change (x : G) ∈ stageAt p s.A (Order.succ α)
+    change (y : H) ∈ stageAt p s.B (Order.succ α) at hy
+    refine ⟨x.property.1, ?_⟩
+    apply (s.hφ ⟨(x : G), x.property.1⟩ (Order.succ α)).mpr
+    have heq :
+        (s.e ⟨(x : G), x.property.1⟩ : H) = (y : H) := by
+      simpa [x, kaplanskyStarEquiv] using
+        congrArg Subtype.val
+          ((kaplanskyStarEquiv p s α).apply_symm_apply y)
+    change
+      (s.e ⟨(x : G), x.property.1⟩ : H) ∈
+        ulmSubgroup p (Order.succ α)
+    rw [heq]
+    exact hy.2
+
+/-- The stage isomorphism induces an additive equivalence between the finite
+source quotients in Kaplansky's range maps. -/
+noncomputable def kaplanskyDomainEquiv
+    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    kaplanskyDomainQuotient p s.A α ≃+
+      kaplanskyDomainQuotient p s.B α :=
+  QuotientAddGroup.congr
+    (stageAtSuccInStar p s.A α)
+    (stageAtSuccInStar p s.B α)
+    (kaplanskyStarEquiv p s α)
+    (kaplanskyStarEquiv_map_stageAtSucc p s α)
+
+/-- Corresponding finite stages give Kaplansky source quotients of equal
+`ZMod p`-dimension. -/
+theorem kaplanskyDomain_rank_eq
+    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    Module.rank (ZMod p) (kaplanskyDomainQuotient p s.A α) =
+      Module.rank (ZMod p) (kaplanskyDomainQuotient p s.B α) := by
+  let E := kaplanskyDomainEquiv p s α
+  let L :
+      kaplanskyDomainQuotient p s.A α →ₗ[ZMod p]
+        kaplanskyDomainQuotient p s.B α :=
+    E.toAddMonoidHom.toZModLinearMap p
+  let LE :
+      kaplanskyDomainQuotient p s.A α ≃ₗ[ZMod p]
+        kaplanskyDomainQuotient p s.B α :=
+    LinearEquiv.ofBijective L E.bijective
+  exact LinearEquiv.rank_eq LE
+
+/-- Kaplansky's source quotient is finite-dimensional when the stage itself
+is finite. -/
+theorem kaplanskyDomain_module_finite
+    (S : AddSubgroup G) (hSfinite : Set.Finite (S : Set G))
+    (α : Ordinal.{0}) :
+    Module.Finite (ZMod p) (kaplanskyDomainQuotient p S α) := by
+  have hstar :
+      Set.Finite (kaplanskyStar p S α : Set G) :=
+    hSfinite.subset (by
+      intro x hx
+      exact hx.1)
+  letI : Finite (kaplanskyStar p S α) := hstar.to_subtype
+  letI : Finite (kaplanskyDomainQuotient p S α) :=
+    Finite.of_surjective
+      (QuotientAddGroup.mk' (stageAtSuccInStar p S α))
+      (QuotientAddGroup.mk'_surjective _)
+  apply Module.Finite.of_fg_top
+  rw [← Submodule.span_univ]
+  exact Submodule.fg_span Set.finite_univ
+
+/-- Non-surjectivity of Kaplansky's range map transfers across a finite
+height-preserving stage when the ordinary Ulm invariants at `α` agree.
+
+Finiteness of the source quotient is essential here: injective endomorphisms
+of infinite-dimensional spaces need not be onto. -/
+theorem kaplansky_not_surjective_transfer
+    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0})
+    (hinv :
+      ulmInvariant p α (G := G) = ulmInvariant p α (G := H))
+    (hGroom : ¬ Function.Surjective (kaplanskyMap p s.A α)) :
+    ¬ Function.Surjective (kaplanskyMap p s.B α) := by
+  intro hHsurj
+  let DA := kaplanskyDomainQuotient p s.A α
+  let DB := kaplanskyDomainQuotient p s.B α
+  let PG := ulmQuotient p α (G := G)
+  let PH := ulmQuotient p α (G := H)
+  let UG : DA →ₗ[ZMod p] PG :=
+    kaplanskyLinearMap p s.A α (kaplanskyMap p s.A α)
+  let UH : DB →ₗ[ZMod p] PH :=
+    kaplanskyLinearMap p s.B α (kaplanskyMap p s.B α)
+  letI : Module.Finite (ZMod p) DA :=
+    kaplanskyDomain_module_finite p s.A s.hAfinite α
+  letI : Module.Finite (ZMod p) DB :=
+    kaplanskyDomain_module_finite p s.B s.hBfinite α
+  have hUHinj : Function.Injective UH :=
+    kaplanskyMap_injective p s.B α
+  have hUHsurj : Function.Surjective UH := hHsurj
+  let EH : DB ≃ₗ[ZMod p] PH :=
+    LinearEquiv.ofBijective UH ⟨hUHinj, hUHsurj⟩
+  letI : Module.Finite (ZMod p) PH :=
+    Module.Finite.of_surjective UH hUHsurj
+  have hrankDA_PH :
+      Module.rank (ZMod p) DA = Module.rank (ZMod p) PH := by
+    calc
+      Module.rank (ZMod p) DA = Module.rank (ZMod p) DB :=
+        kaplanskyDomain_rank_eq p s α
+      _ = Module.rank (ZMod p) PH := LinearEquiv.rank_eq EH
+  have hrankDA_PG :
+      Module.rank (ZMod p) DA = Module.rank (ZMod p) PG := by
+    exact hrankDA_PH.trans hinv.symm
+  have hrankPG_nat :
+      Module.rank (ZMod p) PG =
+        (Module.finrank (ZMod p) DA : Cardinal) := by
+    exact hrankDA_PG.symm.trans
+      (Module.finrank_eq_rank (R := ZMod p) (M := DA)).symm
+  letI : Module.Finite (ZMod p) PG :=
+    Module.finite_of_rank_eq_nat hrankPG_nat
+  have hfinPG :
+      Module.finrank (ZMod p) PG = Module.finrank (ZMod p) DA :=
+    Module.finrank_eq_of_rank_eq hrankPG_nat
+  have hUGinj : Function.Injective UG :=
+    kaplanskyMap_injective p s.A α
+  have hUGsurj : Function.Surjective UG :=
+    (LinearMap.injective_iff_surjective_of_finrank_eq_finrank hfinPG.symm).mp hUGinj
+  exact hGroom hUGsurj
 
 omit hp in
  /-- Trivial extension when the prescribed generator is already in the domain subgroup. -/
@@ -160,6 +710,33 @@ lemma adjoinElem_fg {A : AddSubgroup G} (hAfg : A.FG) (g : G) :
   unfold adjoinElem
   refine hAfg.sup ?_
   exact (AddSubgroup.fg_iff _).2 ⟨{g}, rfl, Set.finite_singleton g⟩
+
+/-- Adjoining one element to a finite subgroup of a primary group remains finite. -/
+lemma adjoinElem_finite
+    (hG : IsPrimaryPGroup p G)
+    {A : AddSubgroup G} (hAfinite : Set.Finite (A : Set G)) (g : G) :
+    Set.Finite (adjoinElem A g : Set G) := by
+  have hAfg : A.FG :=
+    (AddSubgroup.fg_iff A).2 ⟨(A : Set G), by simp, hAfinite⟩
+  have hadjfg : (adjoinElem A g).FG := adjoinElem_fg hAfg g
+  letI : AddGroup.FG (adjoinElem A g) :=
+    (AddGroup.fg_iff_addSubgroup_fg (adjoinElem A g)).2 hadjfg
+  have htors : AddMonoid.IsTorsion (adjoinElem A g) := by
+    intro z
+    obtain ⟨n, hn⟩ := hG (z : G)
+    rw [isOfFinAddOrder_iff_nsmul_eq_zero]
+    refine ⟨p ^ n, pow_pos hp.out.pos n, ?_⟩
+    apply Subtype.ext
+    exact hn
+  letI : Finite (adjoinElem A g) :=
+    AddCommGroup.finite_of_fg_torsion (adjoinElem A g) htors
+  have hrange :
+      Set.range (fun z : adjoinElem A g => (z : G)) =
+        (adjoinElem A g : Set G) := by
+    ext z
+    simp
+  rw [← hrange]
+  exact Set.finite_range _
 
 lemma adjoinElem_eq_sup_zmultiples (A : AddSubgroup G) (g : G) :
     adjoinElem A g = A ⊔ AddSubgroup.zmultiples g := by
@@ -396,18 +973,702 @@ lemma extend_well_defined
       congr 1
       abel
 
-/-- Kaplansky's one-generator extension lemma.
+/-- If `x` has exact height `α`, is proper over `A`, and `p • x ∈ A`,
+then no coefficient prime to `p` can move a translate of `x` into
+`G_(α+1)`.  This is the filtration form of the height calculation used
+when Kaplansky says the extended map is still height-preserving. -/
+lemma not_mem_succ_add_zsmul_of_proper
+    {A : AddSubgroup G} {x : G} {α : Ordinal.{0}}
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hxProper : IsProper p A x)
+    (hpxA : p • x ∈ A)
+    (a : A) (n : ℤ) (hn : ¬ (p : ℤ) ∣ n) :
+    (a : G) + n • x ∉ ulmSubgroup p (Order.succ α) (G := G) := by
+  intro hz
+  have hcop_nat : Nat.Coprime p n.natAbs := by
+    refine (Nat.Prime.coprime_iff_not_dvd Fact.out).2 ?_
+    intro hdiv
+    exact hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 hdiv))
+  have hcop : n.gcd ↑p = 1 := by
+    rw [Int.gcd_eq_natAbs]
+    simpa [Nat.gcd_comm] using hcop_nat.gcd_eq_one
+  have hbez : (1 : ℤ) = n * n.gcdA ↑p + ↑p * n.gcdB ↑p := by
+    simpa [hcop] using (Int.gcd_eq_gcd_ab n p)
+  let pxA : A := ⟨(p : ℤ) • x, by simpa using hpxA⟩
+  let s : A :=
+    n.gcdA ↑p • a - n.gcdB ↑p • pxA
+  have hxs :
+      x + (s : G) = n.gcdA ↑p • ((a : G) + n • x) := by
+    change x + (n.gcdA ↑p • (a : G) - n.gcdB ↑p • ((p : ℤ) • x)) =
+      n.gcdA ↑p • ((a : G) + n • x)
+    rw [smul_add, ← mul_zsmul, ← mul_zsmul]
+    have hcoeff :
+        (1 : ℤ) - n.gcdB ↑p * p = n.gcdA ↑p * n := by
+      have hbez' :
+          (1 : ℤ) = n.gcdA ↑p * n + n.gcdB ↑p * p := by
+        simpa [Int.mul_comm] using hbez
+      omega
+    calc
+      x + (n.gcdA ↑p • (a : G) - (n.gcdB ↑p * p) • x) =
+          n.gcdA ↑p • (a : G) +
+            ((1 : ℤ) - n.gcdB ↑p * p) • x := by
+              rw [sub_zsmul, one_zsmul]
+              abel
+      _ = n.gcdA ↑p • (a : G) + (n.gcdA ↑p * n) • x := by
+            rw [hcoeff]
+  have hxsSucc : x + (s : G) ∈
+      ulmSubgroup p (Order.succ α) (G := G) := by
+    rw [hxs]
+    exact (ulmSubgroup p (Order.succ α)).zsmul_mem hz _
+  have hproper := hxProper s
+  have hheight := ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc
+  have hlower :
+      ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+        ulmHeight p (x + (s : G)) :=
+    coe_le_ulmHeight_of_mem p _ _ hxsSucc
+  have hbad :
+      ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+        (α : WithTop Ordinal.{0}) := by
+    rw [← hheight]
+    exact hlower.trans hproper
+  exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
 
-Starting from finite subgroups related by a height-preserving isomorphism, extend the
-stage to cover a prescribed source element.  The natural-language proof first chooses
-a proper representative with maximal `h(px)`, then uses `kaplansky_range_lemma` in its
-second case. -/
-lemma kaplansky_extend
-    (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
-    (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
-    (s : UlmStage p (G := G) (H := H)) (g : G) :
+/-- The elementwise filtration calculation behind the one-generator
+extension.  If `x` and `w` have the same exact height, are proper over the
+matched subgroups, and satisfy the same `p`-relation, then corresponding
+normal forms `a + n • x` and `φ(a) + n • w` lie in exactly the same Ulm
+subgroups. -/
+lemma proper_adjoin_rep_mem_iff
+    {A : AddSubgroup G} {B : AddSubgroup H}
+    (φ : A →+ B) (hφ : IsHeightPresOn p φ)
+    {x : G} {w : H} {α β : Ordinal.{0}}
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hwα : w ∈ ulmSubgroup p α (G := H))
+    (hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H))
+    (hxProper : IsProper p A x) (hwProper : IsProper p B w)
+    (hpxA : p • x ∈ A)
+    (hpw : p • w = (φ ⟨p • x, hpxA⟩ : H))
+    (a : A) (n : ℤ) :
+    ((a : G) + n • x ∈ ulmSubgroup p β (G := G)) ↔
+      ((φ a : H) + n • w ∈ ulmSubgroup p β (G := H)) := by
+  by_cases hn : (p : ℤ) ∣ n
+  · obtain ⟨k, rfl⟩ := hn
+    let a' : A := a + k • ⟨p • x, hpxA⟩
+    have hxrepr :
+        (a : G) + ((p : ℤ) * k) • x = (a' : G) := by
+      change (a : G) + ((p : ℤ) * k) • x =
+        (a : G) + k • (p • x)
+      simp [mul_zsmul, Int.mul_comm]
+    have hwrepr :
+        (φ a : H) + ((p : ℤ) * k) • w = (φ a' : H) := by
+      change (φ a : H) + ((p : ℤ) * k) • w =
+        (φ (a + k • ⟨p • x, hpxA⟩) : H)
+      rw [map_add, map_zsmul]
+      change (φ a : H) + ((p : ℤ) * k) • w =
+        (φ a : H) + k • (φ ⟨p • x, hpxA⟩ : H)
+      rw [← hpw]
+      simp [mul_zsmul, Int.mul_comm]
+    rw [hxrepr, hwrepr]
+    exact hφ a' β
+  · by_cases hβα : β ≤ α
+    · have hxβ : x ∈ ulmSubgroup p β (G := G) :=
+        ulmSubgroup_antitone p hβα hxα
+      have hwβ : w ∈ ulmSubgroup p β (G := H) :=
+        ulmSubgroup_antitone p hβα hwα
+      have hsource :
+          ((a : G) + n • x ∈ ulmSubgroup p β (G := G)) ↔
+            (a : G) ∈ ulmSubgroup p β (G := G) := by
+        constructor
+        · intro hsum
+          have hsub :=
+            (ulmSubgroup p β (G := G)).sub_mem hsum
+              ((ulmSubgroup p β (G := G)).zsmul_mem hxβ n)
+          simpa using hsub
+        · intro ha
+          exact (ulmSubgroup p β (G := G)).add_mem ha
+            ((ulmSubgroup p β (G := G)).zsmul_mem hxβ n)
+      have htarget :
+          ((φ a : H) + n • w ∈ ulmSubgroup p β (G := H)) ↔
+            (φ a : H) ∈ ulmSubgroup p β (G := H) := by
+        constructor
+        · intro hsum
+          have hsub :=
+            (ulmSubgroup p β (G := H)).sub_mem hsum
+              ((ulmSubgroup p β (G := H)).zsmul_mem hwβ n)
+          simpa using hsub
+        · intro ha
+          exact (ulmSubgroup p β (G := H)).add_mem ha
+            ((ulmSubgroup p β (G := H)).zsmul_mem hwβ n)
+      exact hsource.trans ((hφ a β).trans htarget.symm)
+    · have hsuccβ : Order.succ α ≤ β :=
+        Order.succ_le_iff.mpr (lt_of_not_ge hβα)
+      have hsource :
+          (a : G) + n • x ∉ ulmSubgroup p β (G := G) := by
+        intro hmem
+        exact
+          (not_mem_succ_add_zsmul_of_proper p hxα hxSucc hxProper hpxA a n hn)
+            (ulmSubgroup_antitone p hsuccβ hmem)
+      have htarget :
+          (φ a : H) + n • w ∉ ulmSubgroup p β (G := H) := by
+        intro hmem
+        exact
+          (not_mem_succ_add_zsmul_of_proper p hwα hwSucc hwProper
+            (by
+              rw [hpw]
+              exact (φ ⟨p • x, hpxA⟩).prop)
+            (φ a) n hn)
+            (ulmSubgroup_antitone p hsuccβ hmem)
+      exact iff_of_false hsource htarget
+
+/-- The quotient-built homomorphism on `A + ⟨x⟩` is height-preserving once
+the chosen image `w` satisfies Kaplansky's exact-height and properness
+conditions. -/
+lemma socle_extend_build_map_heightPres
+    {A : AddSubgroup G} {B : AddSubgroup H}
+    (φ : A →+ B) (hφ : IsHeightPresOn p φ)
+    {x : G} (hx_notin : x ∉ A) {w : H} {α : Ordinal.{0}}
+    (hpxA : p • x ∈ A)
+    (hpw : p • w = (φ ⟨p • x, hpxA⟩ : H))
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hwα : w ∈ ulmSubgroup p α (G := H))
+    (hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H))
+    (hxProper : IsProper p A x) (hwProper : IsProper p B w) :
+    ∃ φ' : adjoinElem A x →+ (⊤ : AddSubgroup H),
+      (∀ a : A,
+        (φ' ⟨a, le_adjoinElem (A := A) (g := x) a.prop⟩ : H) = φ a) ∧
+      (φ' ⟨x, mem_adjoinElem_right (A := A) x⟩ : H) = w ∧
+      IsHeightPresOn p φ' := by
+  obtain ⟨φ', hφA, hφx⟩ :=
+    socle_extend_build_map (p := p) φ hx_notin hpxA hpw
+  refine ⟨φ', hφA, hφx, ?_⟩
+  intro z β
+  obtain ⟨a, haA, n, hrepr⟩ :=
+    (mem_adjoinElem_iff (A := A) (g := x)).1 z.prop
+  let aA : A := ⟨a, haA⟩
+  let a' : adjoinElem A x :=
+    ⟨a, le_adjoinElem (A := A) (g := x) haA⟩
+  let x' : adjoinElem A x :=
+    ⟨x, mem_adjoinElem_right (A := A) x⟩
+  have hz : z = a' + n • x' := by
+    apply Subtype.ext
+    simpa [a', x'] using hrepr.symm
+  have hmap :
+      (φ' z : H) = (φ aA : H) + n • w := by
+    rw [hz, map_add, map_zsmul]
+    change (φ' a' : H) + n • (φ' x' : H) =
+      (φ aA : H) + n • w
+    rw [show (φ' a' : H) = φ aA by
+      simpa [a', aA] using hφA aA]
+    rw [show (φ' x' : H) = w by
+      simpa [x'] using hφx]
+  change (z : G) ∈ ulmSubgroup p β (G := G) ↔
+    (φ' z : H) ∈ ulmSubgroup p β (G := H)
+  rw [hmap, hz]
+  change ((aA : G) + n • x ∈ ulmSubgroup p β (G := G)) ↔
+    ((φ aA : H) + n • w ∈ ulmSubgroup p β (G := H))
+  exact
+    proper_adjoin_rep_mem_iff p φ hφ hxα hxSucc hwα hwSucc
+      hxProper hwProper hpxA hpw aA n
+
+/-- Once the target representative required on page 30 has been found, the
+actual finite-stage extension is formal algebra: build the quotient map,
+restrict its codomain to its range, and use height preservation for
+injectivity. -/
+lemma kaplansky_extend_one_of_target
+    (hG : IsReducedPGroup p G)
+    (s : UlmStage p (G := G) (H := H))
+    {x : G} (hx_notin : x ∉ s.A) {w : H} {α : Ordinal.{0}}
+    (hpxA : p • x ∈ s.A)
+    (hpw : p • w = (s.e ⟨p • x, hpxA⟩ : H))
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hwα : w ∈ ulmSubgroup p α (G := H))
+    (hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H))
+    (hxProper : IsProper p s.A x) (hwProper : IsProper p s.B w) :
     ∃ (s' : UlmStage p (G := G) (H := H))
-      (hAA : s.A ≤ s'.A) (hBB : s.B ≤ s'.B),
+      (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
+      x ∈ s'.A ∧
+      ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
+  obtain ⟨f, hfA, hfx, hfheight⟩ :=
+    socle_extend_build_map_heightPres (p := p)
+      s.e.toAddMonoidHom s.hφ hx_notin hpxA hpw
+      hxα hxSucc hwα hwSucc hxProper hwProper
+  let A' : AddSubgroup G := adjoinElem s.A x
+  let raw : A' →+ H := (⊤ : AddSubgroup H).subtype.comp f
+  let B' : AddSubgroup H := AddMonoidHom.range raw
+  have hf_inj : Function.Injective f :=
+    IsHeightPresOn.injective (p := p) hG hfheight
+  have hraw_inj : Function.Injective raw := by
+    intro a b hab
+    apply hf_inj
+    apply Subtype.ext
+    exact hab
+  have hrange_inj : Function.Injective raw.rangeRestrict := by
+    intro a b hab
+    apply hf_inj
+    apply Subtype.ext
+    simpa [raw] using congrArg Subtype.val hab
+  let e : A' ≃+ B' :=
+    AddEquiv.ofBijective raw.rangeRestrict
+      ⟨hrange_inj, AddMonoidHom.rangeRestrict_surjective raw⟩
+  have hA'finite : Set.Finite (A' : Set G) := by
+    exact adjoinElem_finite (p := p) hG.primary s.hAfinite x
+  letI : Finite A' := hA'finite.to_subtype
+  have hB'finite : Set.Finite (B' : Set H) := by
+    change Set.Finite (Set.range raw)
+    exact Set.finite_range raw
+  have heheight : IsHeightPresOn p e.toAddMonoidHom := by
+    intro a β
+    simpa [e, raw] using hfheight a β
+  let s' : UlmStage p (G := G) (H := H) :=
+    { A := A'
+      B := B'
+      hAfinite := hA'finite
+      hBfinite := hB'finite
+      e := e
+      hφ := heheight }
+  have hAA : s.A ≤ s'.A := by
+    exact le_adjoinElem s.A x
+  have hBB : s.B ≤ s'.B := by
+    intro b hb
+    let a : s.A := s.e.symm ⟨b, hb⟩
+    change b ∈ B'
+    change b ∈ AddMonoidHom.range raw
+    refine ⟨⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩, ?_⟩
+    change raw ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ = b
+    change (f ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) = b
+    rw [hfA a]
+    simp [a]
+  refine ⟨s', hAA, hBB, ?_, ?_⟩
+  · exact mem_adjoinElem_right s.A x
+  · intro a
+    change
+      (e ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) =
+        s.e a
+    change
+      (f ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) =
+        s.e a
+    exact hfA a
+
+omit hp in
+/-- A finite coset has a representative satisfying both of Kaplansky's
+normalizations: first maximize the height of the representative, then, among
+the proper representatives, maximize the height of its `p`-multiple. -/
+lemma exists_kaplanskyNormalized
+    {A : AddSubgroup G} (hAfinite : Set.Finite (A : Set G)) (g : G) :
+    ∃ x : G,
+      x - g ∈ A ∧
+      IsProper p A x ∧
+      ∀ y : G, y - g ∈ A → IsProper p A y →
+        ulmHeight p (p • y) ≤ ulmHeight p (p • x) := by
+  have hAne : (A : Set G).Nonempty := ⟨0, A.zero_mem⟩
+  obtain ⟨a₀, ha₀A, ha₀max⟩ :=
+    Set.exists_max_image (A : Set G) (fun a => ulmHeight p (g + a))
+      hAfinite hAne
+  have ha₀proper : IsProper p A (g + a₀) := by
+    intro a
+    have haa : a₀ + (a : G) ∈ A := A.add_mem ha₀A a.prop
+    simpa [add_assoc] using ha₀max (a₀ + (a : G)) haa
+  let C : Set G := {a | a ∈ A ∧ IsProper p A (g + a)}
+  have hCfinite : C.Finite :=
+    hAfinite.subset (by
+      intro a ha
+      exact ha.1)
+  have hCne : C.Nonempty := ⟨a₀, ha₀A, ha₀proper⟩
+  obtain ⟨a, haC, hamax⟩ :=
+    Set.exists_max_image C (fun a => ulmHeight p (p • (g + a)))
+      hCfinite hCne
+  refine ⟨g + a, by simpa using haC.1, haC.2, ?_⟩
+  intro y hyA hyProper
+  have hyrepr : g + (y - g) = y := by abel
+  have hyC : y - g ∈ C := by
+    refine ⟨hyA, ?_⟩
+    simpa [hyrepr] using hyProper
+  simpa [hyrepr] using hamax (y - g) hyC
+
+/-- Kaplansky's Case I target construction.
+
+If `p • x` has exact height `α+1`, any height-`α` root of its image is
+automatically proper over the target stage.  The proof uses the second
+normalization of `x` to rule out a higher translate. -/
+lemma exists_kaplanskyTarget_caseI
+    (s : UlmStage p (G := G) (H := H))
+    {x : G} {α : Ordinal.{0}}
+    (hpxA : p • x ∈ s.A)
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hxProper : IsProper p s.A x)
+    (hpxMax : ∀ y : G, y - x ∈ s.A → IsProper p s.A y →
+      ulmHeight p (p • y) ≤ ulmHeight p (p • x))
+    (hcaseI :
+      p • x ∉ ulmSubgroup p (Order.succ (Order.succ α)) (G := G)) :
+    ∃ w : H,
+      p • w = (s.e ⟨p • x, hpxA⟩ : H) ∧
+      w ∈ ulmSubgroup p α (G := H) ∧
+      w ∉ ulmSubgroup p (Order.succ α) (G := H) ∧
+      IsProper p s.B w := by
+  let z : H := s.e ⟨p • x, hpxA⟩
+  have hpxSucc : p • x ∈
+      ulmSubgroup p (Order.succ α) (G := G) := by
+    rw [ulmSubgroup_succ]
+    exact ⟨x, hxα, rfl⟩
+  have hzSucc : z ∈ ulmSubgroup p (Order.succ α) (G := H) := by
+    exact (s.hφ ⟨p • x, hpxA⟩ (Order.succ α)).mp hpxSucc
+  have hzSuccSucc :
+      z ∉ ulmSubgroup p (Order.succ (Order.succ α)) (G := H) := by
+    intro hz
+    exact hcaseI
+      ((s.hφ ⟨p • x, hpxA⟩ (Order.succ (Order.succ α))).mpr hz)
+  rw [ulmSubgroup_succ] at hzSucc
+  obtain ⟨w, hwα, hpw⟩ := hzSucc
+  have hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H) := by
+    intro hw
+    apply hzSuccSucc
+    rw [← hpw, ulmSubgroup_succ]
+    exact ⟨w, hw, rfl⟩
+  have hwHeight :
+      ulmHeight p w = (α : WithTop Ordinal.{0}) :=
+    ulmHeight_eq_of_mem_not_mem_succ p w α hwα hwSucc
+  refine ⟨w, hpw, hwα, hwSucc, ?_⟩
+  intro t
+  rw [hwHeight]
+  apply ulmHeight_le_of_not_mem_succ p (w + (t : H)) α
+  intro hwtSucc
+  have hwtα : w + (t : H) ∈ ulmSubgroup p α (G := H) :=
+    ulmSubgroup_antitone p (Order.le_succ α) hwtSucc
+  have htα : (t : H) ∈ ulmSubgroup p α (G := H) := by
+    have := (ulmSubgroup p α (G := H)).sub_mem hwtα hwα
+    simpa using this
+  let a : s.A := s.e.symm t
+  have hea : s.e a = t := by simp [a]
+  have haα : (a : G) ∈ ulmSubgroup p α (G := G) := by
+    apply (s.hφ a α).mpr
+    simpa [hea] using htα
+  let y : G := x + (a : G)
+  have hyα : y ∈ ulmSubgroup p α (G := G) :=
+    (ulmSubgroup p α).add_mem hxα haα
+  have hySucc : y ∉ ulmSubgroup p (Order.succ α) (G := G) := by
+    intro hy
+    have hlower :
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+          ulmHeight p y :=
+      coe_le_ulmHeight_of_mem p y (Order.succ α) hy
+    have hproper := hxProper a
+    have hxHeight :=
+      ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc
+    have hbad :
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+          (α : WithTop Ordinal.{0}) := by
+      rw [← hxHeight]
+      exact hlower.trans hproper
+    exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
+  have hyHeight :
+      ulmHeight p y = (α : WithTop Ordinal.{0}) :=
+    ulmHeight_eq_of_mem_not_mem_succ p y α hyα hySucc
+  have hyProper : IsProper p s.A y := by
+    intro b
+    rw [hyHeight, ← ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc]
+    have hxb := hxProper (a + b)
+    simpa [y, add_assoc] using hxb
+  have hycoset : y - x ∈ s.A := by
+    simpa [y] using a.prop
+  have hpyA : p • y ∈ s.A := by
+    change p • (x + (a : G)) ∈ s.A
+    rw [smul_add]
+    exact s.A.add_mem hpxA (s.A.nsmul_mem a.prop p)
+  let pyA : s.A := ⟨p • y, hpyA⟩
+  have hepy :
+      (s.e pyA : H) = p • (w + (t : H)) := by
+    change (s.e ⟨p • (x + (a : G)), hpyA⟩ : H) =
+      p • (w + (t : H))
+    have hdecomp :
+        (⟨p • (x + (a : G)), hpyA⟩ : s.A) =
+          ⟨p • x, hpxA⟩ + p • a := by
+      apply Subtype.ext
+      simp [smul_add]
+    rw [hdecomp, map_add, map_nsmul]
+    change (s.e ⟨p • x, hpxA⟩ : H) +
+      p • (s.e a : H) = p • (w + (t : H))
+    change z + p • (s.e a : H) = p • (w + (t : H))
+    rw [← hpw, hea, smul_add]
+  have hpwt :
+      p • (w + (t : H)) ∈
+        ulmSubgroup p (Order.succ (Order.succ α)) (G := H) := by
+    rw [ulmSubgroup_succ]
+    exact ⟨w + (t : H), hwtSucc, rfl⟩
+  have hpySuccSucc :
+      p • y ∈
+        ulmSubgroup p (Order.succ (Order.succ α)) (G := G) := by
+    apply (s.hφ pyA (Order.succ (Order.succ α))).mpr
+    simpa [hepy] using hpwt
+  have hlower :
+      ((Order.succ (Order.succ α) : Ordinal.{0}) :
+        WithTop Ordinal.{0}) ≤ ulmHeight p (p • y) :=
+    coe_le_ulmHeight_of_mem p (p • y)
+      (Order.succ (Order.succ α)) hpySuccSucc
+  have hupper1 :=
+    hpxMax y hycoset hyProper
+  have hupper2 :
+      ulmHeight p (p • x) ≤
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) :=
+    ulmHeight_le_of_not_mem_succ p (p • x) (Order.succ α) hcaseI
+  have hbad :
+      ((Order.succ (Order.succ α) : Ordinal.{0}) :
+        WithTop Ordinal.{0}) ≤
+      ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) :=
+    hlower.trans (hupper1.trans hupper2)
+  exact
+    (not_le_of_gt
+      (WithTop.coe_lt_coe.mpr (Order.lt_succ (Order.succ α)))) hbad
+
+/-- Kaplansky's Case II target construction.
+
+When `p • x` lies two levels higher, subtract a higher root to expose a
+proper exact-height socle element.  The canonical range lemma and equality of
+the ordinary Ulm invariant transfer the resulting room to the target side;
+adding that target socle element to a higher root gives the required image. -/
+lemma exists_kaplanskyTarget_caseII
+    (s : UlmStage p (G := G) (H := H))
+    {x : G} {α : Ordinal.{0}}
+    (hinv :
+      ulmInvariant p α (G := G) = ulmInvariant p α (G := H))
+    (hpxA : p • x ∈ s.A)
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hxProper : IsProper p s.A x)
+    (hcaseII :
+      p • x ∈ ulmSubgroup p (Order.succ (Order.succ α)) (G := G)) :
+    ∃ w : H,
+      p • w = (s.e ⟨p • x, hpxA⟩ : H) ∧
+      w ∈ ulmSubgroup p α (G := H) ∧
+      w ∉ ulmSubgroup p (Order.succ α) (G := H) ∧
+      IsProper p s.B w := by
+  have hroot := hcaseII
+  rw [ulmSubgroup_succ] at hroot
+  obtain ⟨v, hvSucc, hpv⟩ := hroot
+  let q : G := x - v
+  have hpq : p • q = 0 := by
+    simp [q, smul_sub, hpv]
+  have hqα : q ∈ ulmSubgroup p α (G := G) := by
+    exact (ulmSubgroup p α).sub_mem hxα
+      (ulmSubgroup_antitone p (Order.le_succ α) hvSucc)
+  have hqSucc : q ∉ ulmSubgroup p (Order.succ α) (G := G) := by
+    intro hq
+    apply hxSucc
+    have hxqv : x = q + v := by simp [q]
+    rw [hxqv]
+    exact (ulmSubgroup p (Order.succ α)).add_mem hq hvSucc
+  have hqHeight :
+      ulmHeight p q = (α : WithTop Ordinal.{0}) :=
+    ulmHeight_eq_of_mem_not_mem_succ p q α hqα hqSucc
+  have hqProper : IsProper p s.A q := by
+    intro a
+    rw [hqHeight]
+    apply ulmHeight_le_of_not_mem_succ p (q + (a : G)) α
+    intro hqa
+    have hxaSucc :
+        x + (a : G) ∈ ulmSubgroup p (Order.succ α) (G := G) := by
+      have hdecomp : x + (a : G) = (q + (a : G)) + v := by
+        simp [q]
+        abel
+      rw [hdecomp]
+      exact (ulmSubgroup p (Order.succ α)).add_mem hqa hvSucc
+    have hlower :
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+          ulmHeight p (x + (a : G)) :=
+      coe_le_ulmHeight_of_mem p _ _ hxaSucc
+    have hupper := hxProper a
+    have hxHeight :=
+      ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc
+    have hbad :
+        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+          (α : WithTop Ordinal.{0}) := by
+      rw [← hxHeight]
+      exact hlower.trans hupper
+    exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
+  have hqP : q ∈ pSocleAt p α (G := G) := by
+    rw [mem_pSocleAt]
+    exact ⟨hpq, hqα⟩
+  have hGroom : ¬ Function.Surjective (kaplanskyMap p s.A α) :=
+    (kaplanskyMap_not_surjective_iff_proper p s.A α).2
+      ⟨q, hqP, hqSucc, hqProper⟩
+  have hHroom : ¬ Function.Surjective (kaplanskyMap p s.B α) :=
+    kaplansky_not_surjective_transfer p s α hinv hGroom
+  obtain ⟨w₀, hw₀P, hw₀Succ, hw₀Proper⟩ :=
+    (kaplanskyMap_not_surjective_iff_proper p s.B α).1 hHroom
+  have hpw₀ : p • w₀ = 0 := (mem_pSocleAt p α w₀).1 hw₀P |>.1
+  have hw₀α : w₀ ∈ ulmSubgroup p α (G := H) :=
+    (mem_pSocleAt p α w₀).1 hw₀P |>.2
+  let z : H := s.e ⟨p • x, hpxA⟩
+  have hzSuccSucc :
+      z ∈ ulmSubgroup p (Order.succ (Order.succ α)) (G := H) :=
+    (s.hφ ⟨p • x, hpxA⟩
+      (Order.succ (Order.succ α))).mp hcaseII
+  rw [ulmSubgroup_succ] at hzSuccSucc
+  obtain ⟨w₂, hw₂Succ, hpw₂⟩ := hzSuccSucc
+  let w : H := w₀ + w₂
+  have hpw : p • w = z := by
+    simp [w, smul_add, hpw₀, hpw₂]
+  have hwα : w ∈ ulmSubgroup p α (G := H) := by
+    exact (ulmSubgroup p α).add_mem hw₀α
+      (ulmSubgroup_antitone p (Order.le_succ α) hw₂Succ)
+  have hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H) := by
+    intro hw
+    apply hw₀Succ
+    have hw₀eq : w₀ = w - w₂ := by simp [w]
+    rw [hw₀eq]
+    exact (ulmSubgroup p (Order.succ α)).sub_mem hw hw₂Succ
+  have hwHeight :
+      ulmHeight p w = (α : WithTop Ordinal.{0}) :=
+    ulmHeight_eq_of_mem_not_mem_succ p w α hwα hwSucc
+  refine ⟨w, hpw, hwα, hwSucc, ?_⟩
+  intro t
+  rw [hwHeight]
+  apply ulmHeight_le_of_not_mem_succ p (w + (t : H)) α
+  intro hwt
+  have hw₀t :
+      w₀ + (t : H) ∈ ulmSubgroup p (Order.succ α) (G := H) := by
+    have heq : w₀ + (t : H) = (w + (t : H)) - w₂ := by
+      simp [w]
+      abel
+    rw [heq]
+    exact (ulmSubgroup p (Order.succ α)).sub_mem hwt hw₂Succ
+  have hlower :
+      ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+        ulmHeight p (w₀ + (t : H)) :=
+    coe_le_ulmHeight_of_mem p _ _ hw₀t
+  have hupper := hw₀Proper t
+  have hw₀Height :=
+    ulmHeight_eq_of_mem_not_mem_succ p w₀ α hw₀α hw₀Succ
+  have hbad :
+      ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+        (α : WithTop Ordinal.{0}) := by
+    rw [← hw₀Height]
+    exact hlower.trans hupper
+  exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
+
+/-- Kaplansky's page-30 one-step extension.
+
+The input condition `p • g ∈ A` is the precise one-step hypothesis.  A
+normalized representative of the coset `g + A` has an attained exact height;
+the two target-selection lemmas above then cover whether its `p`-multiple has
+height exactly one higher or lies at least two levels higher. -/
+lemma kaplansky_extend_one
+    (hG : IsReducedPGroup p G)
+    (hinv : ∀ β : Ordinal.{0},
+      ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
+    (s : UlmStage p (G := G) (H := H)) (g : G)
+    (hpgA : p • g ∈ s.A) :
+    ∃ (s' : UlmStage p (G := G) (H := H))
+      (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
       g ∈ s'.A ∧
       ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
-  sorry
+  by_cases hgA : g ∈ s.A
+  · exact ⟨s, le_rfl, le_rfl, hgA, fun _ => rfl⟩
+  obtain ⟨x, hxgA, hxProper, hpxMax'⟩ :=
+    exists_kaplanskyNormalized (p := p) s.hAfinite g
+  have hxA : x ∉ s.A := by
+    intro hx
+    apply hgA
+    have : g = x - (x - g) := by abel
+    rw [this]
+    exact s.A.sub_mem hx hxgA
+  have hx0 : x ≠ 0 := by
+    intro hx
+    apply hxA
+    simpa [hx] using hxgA
+  have hpxA : p • x ∈ s.A := by
+    have hdecomp : p • x = p • g + p • (x - g) := by
+      rw [smul_sub]
+      abel
+    rw [hdecomp]
+    exact s.A.add_mem hpgA (s.A.nsmul_mem hxgA p)
+  obtain ⟨α, hxα, hxSucc⟩ :=
+    exists_ulmHeight_eq_of_ne_zero (p := p) hG hx0
+  have hpxMax :
+      ∀ y : G, y - x ∈ s.A → IsProper p s.A y →
+        ulmHeight p (p • y) ≤ ulmHeight p (p • x) := by
+    intro y hyxA hyProper
+    apply hpxMax' y
+    · have : y - g = (y - x) + (x - g) := by abel
+      rw [this]
+      exact s.A.add_mem hyxA hxgA
+    · exact hyProper
+  obtain ⟨w, hpw, hwα, hwSucc, hwProper⟩ :
+      ∃ w : H,
+        p • w = (s.e ⟨p • x, hpxA⟩ : H) ∧
+        w ∈ ulmSubgroup p α (G := H) ∧
+        w ∉ ulmSubgroup p (Order.succ α) (G := H) ∧
+        IsProper p s.B w := by
+    by_cases hcaseII :
+        p • x ∈
+          ulmSubgroup p (Order.succ (Order.succ α)) (G := G)
+    · exact
+        exists_kaplanskyTarget_caseII p s (hinv α) hpxA
+          hxα hxSucc hxProper hcaseII
+    · exact
+        exists_kaplanskyTarget_caseI p s hpxA hxα hxSucc hxProper
+          hpxMax hcaseII
+  obtain ⟨s', hAA, hBB, hxs', hext⟩ :=
+    kaplansky_extend_one_of_target p hG s hxA hpxA hpw
+      hxα hxSucc hwα hwSucc hxProper hwProper
+  refine ⟨s', hAA, hBB, ?_, hext⟩
+  have hxgA' : x - g ∈ s'.A := hAA hxgA
+  have hgrepr : g = x - (x - g) := by abel
+  rw [hgrepr]
+  exact s'.A.sub_mem hxs' hxgA'
+
+/-- Kaplansky's finite-stage extension theorem.
+
+Starting from finite subgroups related by a height-preserving isomorphism, extend the
+stage to cover a prescribed source element.  This is the iterated conclusion used by
+the back-and-forth construction, not the single `px ∈ A` step on page 30: primaryness
+first supplies a power of `p` lying in `A`, and the proof then applies the single-step
+construction repeatedly.  Only the source group must be reduced in this direction;
+the target reducedness hypothesis enters when this theorem is applied symmetrically
+for the back step.  At each single step `exists_kaplanskyNormalized` supplies
+Kaplansky's two normalizations, and Case II uses the canonical range theorem. -/
+lemma kaplansky_extend
+    (hG : IsReducedPGroup p G)
+    (hinv : ∀ β : Ordinal.{0},
+      ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
+    (s : UlmStage p (G := G) (H := H)) (g : G) :
+    ∃ (s' : UlmStage p (G := G) (H := H))
+      (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
+      g ∈ s'.A ∧
+      ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
+  have extend_pow :
+      ∀ n : ℕ, ∀ t : UlmStage p (G := G) (H := H),
+        p ^ n • g ∈ t.A →
+        ∃ (t' : UlmStage p (G := G) (H := H))
+          (hAA : t.A ≤ t'.A) (_hBB : t.B ≤ t'.B),
+          g ∈ t'.A ∧
+          ∀ a : t.A, (t'.e ⟨a, hAA a.prop⟩ : H) = t.e a := by
+    intro n
+    induction n with
+    | zero =>
+        intro t hpow
+        have hgA : g ∈ t.A := by simpa using hpow
+        exact ⟨t, le_rfl, le_rfl, hgA, fun _ => rfl⟩
+    | succ n ih =>
+        intro t hpow
+        let y : G := p ^ n • g
+        have hpyA : p • y ∈ t.A := by
+          simpa [y, pow_succ, mul_smul, Nat.mul_comm] using hpow
+        obtain ⟨t₁, hAA₁, hBB₁, hy₁, hext₁⟩ :=
+          kaplansky_extend_one p hG hinv t y hpyA
+        obtain ⟨t₂, hAA₂, hBB₂, hg₂, hext₂⟩ :=
+          ih t₁ hy₁
+        let hAA : t.A ≤ t₂.A := hAA₁.trans hAA₂
+        let hBB : t.B ≤ t₂.B := hBB₁.trans hBB₂
+        refine ⟨t₂, hAA, hBB, hg₂, ?_⟩
+        intro a
+        calc
+          (t₂.e ⟨a, hAA a.prop⟩ : H) =
+              t₁.e ⟨a, hAA₁ a.prop⟩ := hext₂ ⟨a, hAA₁ a.prop⟩
+          _ = t.e a := hext₁ a
+  obtain ⟨n, hn⟩ := hG.primary g
+  exact extend_pow n s (by simpa [hn])

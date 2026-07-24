@@ -290,15 +290,16 @@ lemma iso_of_ulmInvariant_eq_of_backAndForth
 /-- The back extension obtained by applying Kaplansky's extension lemma to the
 inverse finite partial isomorphism. -/
 private lemma kaplansky_extend_back
-    (hG : IsReducedPGroup p G) (hH : IsReducedPGroup p H)
-    (hinv : ∀ β : Ordinal, ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
+    (hH : IsReducedPGroup p H)
+    (hinv : ∀ β : Ordinal.{0},
+      ulmInvariant p β (G := G) = ulmInvariant p β (G := H))
     (s : BFIsoStep p (G := G) (H := H)) (h : H) :
     ∃ (s' : BFIsoStep p (G := G) (H := H))
       (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
       h ∈ s'.B ∧
       ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
   obtain ⟨t, hBB, hAA, hh, hcomp⟩ :=
-    kaplansky_extend (p := p) hH hG (fun β => (hinv β).symm) s.symm h
+    kaplansky_extend (p := p) hH (fun β => (hinv β).symm) s.symm h
   refine ⟨t.symm, hAA, hBB, hh, ?_⟩
   intro a
   have ht :
@@ -314,14 +315,15 @@ private lemma kaplansky_extend_back
     simpa using congrArg Subtype.val hsymm
   exact hvals.symm
 
-/-- Hard direction of Ulm's theorem: equal Ulm invariants imply isomorphism.
-The only mathematical gap is now Kaplansky's finite-stage extension lemma. -/
+/-- Hard direction of Ulm's theorem: equal Ulm invariants imply isomorphism,
+using the proved Kaplansky finite-stage extension in both directions. -/
 lemma iso_of_ulmInvariant_eq
     [Countable G] [Countable H]
     (hG : IsReducedPGroup p G)
     (hH : IsReducedPGroup p H)
-    (hinv : ∀ α : Ordinal, ulmInvariant p α (G := G) = ulmInvariant p α (G := H)) :
+    (hinv : ∀ α : Ordinal.{0},
+      ulmInvariant p α (G := G) = ulmInvariant p α (G := H)) :
     Nonempty (G ≃+ H) := by
   apply iso_of_ulmInvariant_eq_of_backAndForth (p := p)
-  · exact fun s g => kaplansky_extend (p := p) hG hH hinv s g
-  · exact fun s h => kaplansky_extend_back (p := p) hG hH hinv s h
+  · exact fun s g => kaplansky_extend (p := p) hG hinv s g
+  · exact fun s h => kaplansky_extend_back (p := p) hH hinv s h

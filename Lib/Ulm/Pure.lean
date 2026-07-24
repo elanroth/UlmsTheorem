@@ -20,6 +20,83 @@ variable {H : Type u} [AddCommGroup H]
 noncomputable def ulmHeight (x : G) : WithTop Ordinal.{0} :=
   ⨆ (α : Ordinal.{0}) (_ : x ∈ ulmSubgroup p α (G := G)), (α : WithTop Ordinal.{0})
 
+/-- Filtration-membership domination implies domination of ordinal Ulm heights. -/
+lemma ulmHeight_le_of_mem_imp (x y : G)
+    (h : ∀ α : Ordinal.{0},
+      x ∈ ulmSubgroup p α (G := G) → y ∈ ulmSubgroup p α (G := G)) :
+    ulmHeight p x ≤ ulmHeight p y := by
+  unfold ulmHeight
+  apply iSup_le
+  intro α
+  apply iSup_le
+  intro hx
+  exact le_iSup_of_le α (le_iSup_of_le (h α hx) le_rfl)
+
+/-- Membership in `G_α` gives the corresponding lower bound on Ulm height. -/
+lemma coe_le_ulmHeight_of_mem (x : G) (α : Ordinal.{0})
+    (hx : x ∈ ulmSubgroup p α (G := G)) :
+    (α : WithTop Ordinal.{0}) ≤ ulmHeight p x := by
+  unfold ulmHeight
+  exact le_iSup_of_le α (le_iSup_of_le hx le_rfl)
+
+/-- Failure of membership at the successor of `α` bounds the Ulm height by `α`.
+
+Unlike the exact-height lemma below, this does not assume membership in `G_α`.
+It is useful when properness rules out a higher representative in a coset. -/
+lemma ulmHeight_le_of_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
+    (hxs : x ∉ ulmSubgroup p (Order.succ α) (G := G)) :
+    ulmHeight p x ≤ (α : WithTop Ordinal.{0}) := by
+  unfold ulmHeight
+  apply iSup_le
+  intro β
+  apply iSup_le
+  intro hxβ
+  exact WithTop.coe_le_coe.mpr (by
+    by_contra hβα
+    have hsucc : Order.succ α ≤ β :=
+      Order.succ_le_iff.mpr (lt_of_not_ge hβα)
+    exact hxs (ulmSubgroup_antitone p hsucc hxβ))
+
+/-- An element in `G_α` but not `G_(α+1)` has Ulm height exactly `α`. -/
+lemma ulmHeight_eq_of_mem_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
+    (hx : x ∈ ulmSubgroup p α (G := G))
+    (hxs : x ∉ ulmSubgroup p (Order.succ α) (G := G)) :
+    ulmHeight p x = (α : WithTop Ordinal.{0}) := by
+  apply le_antisymm
+  · exact ulmHeight_le_of_not_mem_succ p x α hxs
+  · exact coe_le_ulmHeight_of_mem p x α hx
+
+/-- In a reduced `p`-group, every nonzero element has an attained ordinal
+Ulm height.
+
+Reducedness supplies a stage missing the element.  The least such stage
+cannot be zero or a limit stage, so it is a successor `α+1`; minimality then
+puts the element in `G_α` but not in `G_(α+1)`. -/
+lemma exists_ulmHeight_eq_of_ne_zero [Fact p.Prime]
+    (hG : IsReducedPGroup p G) {x : G} (hx0 : x ≠ 0) :
+    ∃ α : Ordinal.{0},
+      x ∈ ulmSubgroup p α (G := G) ∧
+      x ∉ ulmSubgroup p (Order.succ α) (G := G) := by
+  obtain ⟨γ, hγ⟩ := hG.reduced
+  have hxγ : x ∉ ulmSubgroup p γ (G := G) := by
+    rw [hγ]
+    simpa using hx0
+  obtain ⟨δ, hδmin⟩ :=
+    exists_minimal_of_wellFoundedLT
+      (fun β : Ordinal.{0} => x ∉ ulmSubgroup p β (G := G)) ⟨γ, hxγ⟩
+  rcases Ordinal.zero_or_succ_or_isSuccLimit δ with hδ0 | ⟨α, rfl⟩ | hδlim
+  · subst δ
+    exact False.elim (hδmin.1 (by simp))
+  · refine ⟨α, ?_, hδmin.1⟩
+    by_contra hxα
+    exact hδmin.not_prop_of_lt (Order.lt_succ α) hxα
+  · have hnotall :
+        ¬ ∀ β < δ, x ∈ ulmSubgroup p β (G := G) := by
+      simpa [mem_ulmSubgroup_limit_iff p hδlim x] using hδmin.1
+    push Not at hnotall
+    obtain ⟨β, hβδ, hxβ⟩ := hnotall
+    exact False.elim (hδmin.not_prop_of_lt hβδ hxβ)
+
 /-- Height-preserving map between full groups. -/
 def IsHeightPreserving (φ : G →+ H) : Prop :=
   ∀ (x : G) (α : Ordinal.{0}),

@@ -82,15 +82,15 @@ noncomputable def layerInvariant {G : Type*} [AddCommGroup G]
 
 /-! ### The classical Ulm quotient `P_α / P_{α+1}` -/
 
-/-- The classical Ulm quotient at `α`: `P_α / P_{α+1}`. -/
-noncomputable def ulmQuotient {G : Type*} [AddCommGroup G] (α : Ordinal) :
-    Type _ :=
-  (pSocleAt p α (G := G)) ⧸ pSocleAt_succ_subgroupOf p α
+/-- `P_(α+1)` as a `ZMod p`-submodule of `P_α`. -/
+noncomputable def ulmDenSubmodule {G : Type*} [AddCommGroup G] (α : Ordinal) :
+    Submodule (ZMod p) (pSocleAt p α (G := G)) :=
+  AddSubgroup.toZModSubmodule p (pSocleAt_succ_subgroupOf p α)
 
-noncomputable instance {G : Type*} [AddCommGroup G] (α : Ordinal) :
-    AddCommGroup (ulmQuotient p α (G := G)) := by
-  unfold ulmQuotient
-  infer_instance
+/-- The classical Ulm quotient at `α`: `P_α / P_{α+1}`. -/
+abbrev ulmQuotient {G : Type*} [AddCommGroup G] (α : Ordinal) :
+    Type _ :=
+  (pSocleAt p α (G := G)) ⧸ ulmDenSubmodule p α
 
 /-- Every element of the classical Ulm quotient has order `p`. -/
 lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
@@ -100,18 +100,166 @@ lemma ulmQuotient_orderOf_dvd_p {G : Type*} [AddCommGroup G] (α : Ordinal)
   have hp0 : p • a = 0 := by
     ext
     simpa using (mem_pSocleAt p α (a : G)).1 a.property |>.1
-  change QuotientAddGroup.mk' (pSocleAt_succ_subgroupOf p α) (p • a) =
-    QuotientAddGroup.mk' (pSocleAt_succ_subgroupOf p α) 0
-  simpa [hp0]
-
-noncomputable instance ulmQuotient_module {G : Type*} [AddCommGroup G]
-    (α : Ordinal) : Module (ZMod p) (ulmQuotient p α (G := G)) := by
-  simpa [ulmQuotient] using (pSocleAt_quot_module (p := p) (G := G) α)
+  change (Submodule.Quotient.mk (p • a) : ulmQuotient p α (G := G)) = 0
+  rw [hp0]
+  rfl
 
 /-- The classical Ulm invariant `f_G(α) = dim_{ℤ/pℤ}(P_α / P_{α+1})`. -/
 noncomputable def ulmInvariant {G : Type*} [AddCommGroup G]
     (α : Ordinal) : Cardinal :=
   Module.rank (ZMod p) (ulmQuotient p α (G := G))
+
+/-! ### Relative, Hill, and overhang invariants -/
+
+section RelativeInvariants
+
+variable {G : Type*} [AddCommGroup G]
+
+/-- The Hill denominator
+`P_(α+1) + (S ∩ P_α)`, viewed as a subgroup of `P_α`. -/
+noncomputable def hillDen (S : AddSubgroup G) (α : Ordinal) :
+    AddSubgroup (pSocleAt p α (G := G)) :=
+  (pSocleAt p (Order.succ α) ⊔ (S ⊓ pSocleAt p α)).comap
+    (pSocleAt p α).subtype
+
+/-- The Hill denominator as a `ZMod p`-submodule of `P_α`. -/
+noncomputable def hillSubmodule (S : AddSubgroup G) (α : Ordinal) :
+    Submodule (ZMod p) (pSocleAt p α (G := G)) :=
+  AddSubgroup.toZModSubmodule p (hillDen p S α)
+
+/-- Hill's relative socle space
+`P_α / (P_(α+1) + (S ∩ P_α))`. -/
+abbrev hillQuotient (S : AddSubgroup G) (α : Ordinal) : Type _ :=
+  (pSocleAt p α (G := G)) ⧸ hillSubmodule p S α
+
+/-- The Hill invariant
+`dim_(ZMod p) P_α / (P_(α+1) + (S ∩ P_α))`. -/
+noncomputable def hillInvariant (S : AddSubgroup G) (α : Ordinal) : Cardinal :=
+  Module.rank (ZMod p) (hillQuotient p S α)
+
+/-- With no marked subgroup, the Hill invariant is the ordinary Ulm invariant. -/
+theorem hillInvariant_bot (α : Ordinal) :
+    hillInvariant p (⊥ : AddSubgroup G) α = ulmInvariant p α (G := G) := by
+  have hden :
+      hillSubmodule p (⊥ : AddSubgroup G) α = ulmDenSubmodule p α := by
+    ext x
+    simp [hillSubmodule, hillDen, ulmDenSubmodule, pSocleAt_succ_subgroupOf]
+  unfold hillInvariant ulmInvariant
+  change Module.rank (ZMod p)
+      ((pSocleAt p α (G := G)) ⧸ hillSubmodule p (⊥ : AddSubgroup G) α) =
+    Module.rank (ZMod p)
+      ((pSocleAt p α (G := G)) ⧸ ulmDenSubmodule p α)
+  rw [hden]
+
+/-- The BCM/Fuchs relative-Ulm denominator
+`P_α ∩ (S + G_(α+1))`, viewed inside `P_α`. -/
+noncomputable def relativeUlmDen (S : AddSubgroup G) (α : Ordinal) :
+    AddSubgroup (pSocleAt p α (G := G)) :=
+  (pSocleAt p α ⊓ (S ⊔ ulmSubgroup p (Order.succ α))).comap
+    (pSocleAt p α).subtype
+
+/-- The relative-Ulm denominator as a `ZMod p`-submodule of `P_α`. -/
+noncomputable def relativeUlmSubmodule (S : AddSubgroup G) (α : Ordinal) :
+    Submodule (ZMod p) (pSocleAt p α (G := G)) :=
+  AddSubgroup.toZModSubmodule p (relativeUlmDen p S α)
+
+/-- The BCM/Fuchs relative Ulm space
+`P_α / (P_α ∩ (S + G_(α+1)))`. -/
+abbrev relativeUlmQuotient (S : AddSubgroup G) (α : Ordinal) : Type _ :=
+  (pSocleAt p α (G := G)) ⧸ relativeUlmSubmodule p S α
+
+/-- The BCM/Fuchs relative Ulm invariant.
+
+Walker's `u_G^A` uses the Hill quotient defined above instead; keeping the
+attributions distinct prevents the two denominators from being conflated. -/
+noncomputable def relativeUlmInvariant (S : AddSubgroup G) (α : Ordinal) : Cardinal :=
+  Module.rank (ZMod p) (relativeUlmQuotient p S α)
+
+/-- The Hill denominator is contained in the relative-Ulm denominator. -/
+lemma hillSubmodule_le_relativeUlmSubmodule (S : AddSubgroup G) (α : Ordinal) :
+    hillSubmodule p S α ≤ relativeUlmSubmodule p S α := by
+  intro x hx
+  change (x : G) ∈ pSocleAt p α ⊓ (S ⊔ ulmSubgroup p (Order.succ α))
+  change (x : G) ∈
+    pSocleAt p (Order.succ α) ⊔ (S ⊓ pSocleAt p α) at hx
+  refine ⟨x.property, ?_⟩
+  have hle :
+      pSocleAt p (Order.succ α) ⊔ (S ⊓ pSocleAt p α) ≤
+        S ⊔ ulmSubgroup p (Order.succ α) := by
+    apply sup_le
+    · intro y hy
+      exact AddSubgroup.mem_sup_right hy.2
+    · intro y hy
+      exact AddSubgroup.mem_sup_left hy.1
+  exact hle hx
+
+/-- The ordinary Ulm denominator `P_(α+1)` is contained in the
+relative-Ulm denominator. -/
+lemma ulmDenSubmodule_le_relativeUlmSubmodule (S : AddSubgroup G) (α : Ordinal) :
+    ulmDenSubmodule p α ≤ relativeUlmSubmodule p S α := by
+  intro x hx
+  change (x : G) ∈ pSocleAt p α ⊓ (S ⊔ ulmSubgroup p (Order.succ α))
+  change (x : G) ∈ pSocleAt p (Order.succ α) at hx
+  exact ⟨x.property, AddSubgroup.mem_sup_right hx.2⟩
+
+/-- The subspace of the ordinary Ulm layer occupied by the marked subgroup `S`. -/
+noncomputable def relativeOccupiedSubmodule (S : AddSubgroup G) (α : Ordinal) :
+    Submodule (ZMod p) (ulmQuotient p α (G := G)) :=
+  (relativeUlmSubmodule p S α).map (ulmDenSubmodule p α).mkQ
+
+/-- Quotienting the ordinary Ulm layer by its occupied subspace gives the
+relative Ulm space. -/
+noncomputable def occupiedQuotientEquivRelative (S : AddSubgroup G) (α : Ordinal) :
+    (ulmQuotient p α (G := G) ⧸ relativeOccupiedSubmodule p S α) ≃ₗ[ZMod p]
+      relativeUlmQuotient p S α :=
+  Submodule.quotientQuotientEquivQuotient
+    (ulmDenSubmodule p α) (relativeUlmSubmodule p S α)
+    (ulmDenSubmodule_le_relativeUlmSubmodule p S α)
+
+/-- The occupied-space equation underlying the Barwise–Eklof room criterion:
+`relative room + occupied = the ordinary Ulm invariant`. -/
+theorem relativeUlmInvariant_add_occupiedInvariant
+    (S : AddSubgroup G) (α : Ordinal) :
+    relativeUlmInvariant p S α +
+        Module.rank (ZMod p) (relativeOccupiedSubmodule p S α) =
+      ulmInvariant p α (G := G) := by
+  unfold relativeUlmInvariant ulmInvariant
+  rw [← (occupiedQuotientEquivRelative p S α).rank_eq]
+  exact Submodule.rank_quotient_add_rank (relativeOccupiedSubmodule p S α)
+
+/-- The BCM overhang, as the kernel subspace inside the Hill quotient.
+This ordinal-indexed definition extends BCM's finite-level construction. -/
+noncomputable def overhangSubmodule (S : AddSubgroup G) (α : Ordinal) :
+    Submodule (ZMod p) (hillQuotient p S α) :=
+  (relativeUlmSubmodule p S α).map (hillSubmodule p S α).mkQ
+
+/-- The dimension of the BCM overhang space. -/
+noncomputable def overhangInvariant (S : AddSubgroup G) (α : Ordinal) : Cardinal :=
+  Module.rank (ZMod p) (overhangSubmodule (p := p) S α)
+
+/-- The canonical quotient map from the Hill space onto the relative Ulm space. -/
+noncomputable def hillToRelative (S : AddSubgroup G) (α : Ordinal) :
+    hillQuotient p S α →ₗ[ZMod p] relativeUlmQuotient p S α :=
+  Submodule.factor (hillSubmodule_le_relativeUlmSubmodule p S α)
+
+theorem hillToRelative_surjective (S : AddSubgroup G) (α : Ordinal) :
+    Function.Surjective (hillToRelative (p := p) S α) := by
+  exact Submodule.factor_surjective (hillSubmodule_le_relativeUlmSubmodule p S α)
+
+/-- BCM's exact-sequence dimension equation:
+the Hill invariant is the relative Ulm invariant plus the overhang dimension. -/
+theorem relativeUlmInvariant_add_overhangInvariant
+    (S : AddSubgroup G) (α : Ordinal) :
+    relativeUlmInvariant (p := p) S α + overhangInvariant (p := p) S α =
+      hillInvariant p S α := by
+  unfold relativeUlmInvariant overhangInvariant hillInvariant
+  unfold relativeUlmQuotient hillQuotient overhangSubmodule
+  rw [← (Submodule.quotientQuotientEquivQuotient
+    (hillSubmodule p S α) (relativeUlmSubmodule p S α)
+    (hillSubmodule_le_relativeUlmSubmodule p S α)).rank_eq]
+  exact Submodule.rank_quotient_add_rank (overhangSubmodule p S α)
+
+end RelativeInvariants
 
 /-! ### Ulm length -/
 
