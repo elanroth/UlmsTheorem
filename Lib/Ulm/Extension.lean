@@ -373,6 +373,7 @@ theorem relativeUlmQuotient_nontrivial_iff_proper
     intro htop
     let vP : pSocleAt p α (G := G) := ⟨v, hvP⟩
     have hvden : vP ∈ relativeUlmSubmodule p S α := by
+      change vP ∈ hillSubmodule p S α
       rw [htop]
       trivial
     change v ∈ pSocleAt p α ⊓

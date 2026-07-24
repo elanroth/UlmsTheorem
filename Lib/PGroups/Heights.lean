@@ -21,10 +21,10 @@ def IsPrimaryPGroup (G : Type*) [AddCommGroup G] : Prop :=
 
 /-- The `p`-Ulm filtration of `G` is reduced if it eventually reaches zero.
 
-For a `p`-primary group this is equivalent to saying that `G` has no nontrivial divisible
-subgroup: the eventual stable Ulm subgroup is the maximal divisible subgroup.  Crucially,
-this does *not* require `G_ω = 0`; reduced groups may contain elements of infinite height
-and have arbitrary countable Ulm length. -/
+For the countable `p`-primary groups classified below, this is equivalent to saying that
+`G` has no nontrivial divisible subgroup: the eventual stable Ulm subgroup is the maximal
+divisible subgroup.  Crucially, this does *not* require `G_ω = 0`; reduced groups may
+contain elements of infinite height and have arbitrary countable Ulm length. -/
 def IsPReduced (G : Type*) [AddCommGroup G] : Prop :=
   ∃ α : Ordinal.{0}, ulmSubgroup p α (G := G) = ⊥
 
