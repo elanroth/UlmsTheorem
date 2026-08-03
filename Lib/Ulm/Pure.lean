@@ -20,6 +20,10 @@ variable {H : Type u} [AddCommGroup H]
 noncomputable def ulmHeight (x : G) : WithTop Ordinal.{0} :=
   ⨆ (α : Ordinal.{0}) (_ : x ∈ ulmSubgroup p α (G := G)), (α : WithTop Ordinal.{0})
 
+/-- `x` is proper with respect to `S` when its height is maximal in the coset `x + S`. -/
+def IsProper (S : AddSubgroup G) (x : G) : Prop :=
+  ∀ s : S, ulmHeight p x ≥ ulmHeight p (x + s)
+
 /-- Filtration-membership domination implies domination of ordinal Ulm heights. -/
 lemma ulmHeight_le_of_mem_imp (x y : G)
     (h : ∀ α : Ordinal.{0},

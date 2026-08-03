@@ -18,9 +18,8 @@ variable {H : Type u} [AddCommGroup H]
 
 /-! ## Kaplansky's finite-stage data -/
 
-/-- `x` is proper with respect to `S` when its height is maximal in the coset `x + S`. -/
-def IsProper (S : AddSubgroup G) (x : G) : Prop :=
-  ∀ s : S, ulmHeight p x ≥ ulmHeight p (x + s)
+-- `IsProper` now lives in `Lib.Ulm.Pure`, next to `ulmHeight`, so that the
+-- Section 1 definitions layer can use it without importing this file.
 
 /-- `S_α = S ∩ G_α`. -/
 noncomputable def stageAt (S : AddSubgroup G) (α : Ordinal) : AddSubgroup G :=
