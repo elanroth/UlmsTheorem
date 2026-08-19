@@ -61,6 +61,43 @@ lemma ulmHeight_le_of_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
       Order.succ_le_iff.mpr (lt_of_not_ge hβα)
     exact hxs (ulmSubgroup_antitone p hsucc hxβ))
 
+/-- **The converse of `coe_le_ulmHeight_of_mem`.**  A lower bound on the Ulm
+height is membership in the filtration: if `γ ≤ h(x)` then `x ∈ G_γ`.
+
+The supremum defining `ulmHeight` is therefore attained whenever it is bounded by
+an ordinal, so `h(x) ≥ γ` and `x ∈ G_γ` are interchangeable.  This is the bridge
+that lets a height condition stated with `ulmHeight` be used as a filtration
+hypothesis, which is how the jump-space construction consumes clause (e) of the
+odd characterization.
+
+The three cases are genuinely different: at `0` the filtration is everything, at a
+successor the previous lemma bounds the height strictly below, and at a limit the
+inductive hypothesis supplies membership at every smaller level, which is exactly
+the intersection defining `G_γ`. -/
+theorem mem_ulmSubgroup_of_le_ulmHeight [Fact p.Prime] (x : G) (γ : Ordinal.{0})
+    (h : (γ : WithTop Ordinal.{0}) ≤ ulmHeight p x) :
+    x ∈ ulmSubgroup p γ (G := G) := by
+  induction γ using Ordinal.limitRecOn with
+  | zero => simp
+  | succ δ _ih =>
+      by_contra hx
+      have hle : ulmHeight p x ≤ (δ : WithTop Ordinal.{0}) :=
+        ulmHeight_le_of_not_mem_succ p x δ hx
+      have : ((Order.succ δ : Ordinal.{0}) : WithTop Ordinal.{0})
+          ≤ (δ : WithTop Ordinal.{0}) := le_trans h hle
+      exact absurd (WithTop.coe_le_coe.mp this) (not_le_of_gt (Order.lt_succ δ))
+  | limit δ hlim ih =>
+      rw [mem_ulmSubgroup_limit_iff (p := p) (G := G) hlim]
+      intro β hβ
+      refine ih β hβ (le_trans ?_ h)
+      exact WithTop.coe_le_coe.mpr (le_of_lt hβ)
+
+/-- Membership in the filtration and a lower bound on the Ulm height are the same
+statement. -/
+theorem mem_ulmSubgroup_iff_le_ulmHeight [Fact p.Prime] (x : G) (γ : Ordinal.{0}) :
+    x ∈ ulmSubgroup p γ (G := G) ↔ (γ : WithTop Ordinal.{0}) ≤ ulmHeight p x :=
+  ⟨coe_le_ulmHeight_of_mem p x γ, mem_ulmSubgroup_of_le_ulmHeight p x γ⟩
+
 /-- An element in `G_α` but not `G_(α+1)` has Ulm height exactly `α`. -/
 lemma ulmHeight_eq_of_mem_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
     (hx : x ∈ ulmSubgroup p α (G := G))
