@@ -320,6 +320,58 @@ lemma not_mem_of_mem_of_not_mem_add {S : AddSubgroup G} {a b : G}
   intro hab
   exact hb (by simpa using S.sub_mem hab ha)
 
+/-- **Multiplication by an integer prime to `p` preserves the filtration.**
+
+In a primary group every element has `p`-power order, so an `n` prime to `p` is
+invertible on it: Bezout gives `a·n + b·p^k = 1` with `p^k • u = 0`, whence
+`u = a • (n • u)`.  Membership of `n • u` and of `u` therefore agree at every
+level.
+
+This generalizes `mem_ulmSubgroup_zsmul_iff_of_pSocle` off the socle, which is
+what the one-line extension step needs: the challenge element is a socle element,
+but the elements `b + r·x` it must be checked against are not. -/
+lemma mem_ulmSubgroup_zsmul_iff [Fact p.Prime] (hprim : IsPrimaryPGroup p G)
+    {n : ℤ} (hn : ¬ (p : ℤ) ∣ n) (u : G) (β : Ordinal.{0}) :
+    n • u ∈ ulmSubgroup p β (G := G) ↔ u ∈ ulmSubgroup p β (G := G) := by
+  constructor
+  · intro hmem
+    obtain ⟨k, hk⟩ := hprim u
+    -- `n` is prime to `p^k`, so Bezout inverts it on `u`
+    have hcop : IsCoprime (n : ℤ) ((p : ℤ) ^ k) := by
+      exact (Int.isCoprime_iff_gcd_eq_one.mpr (by
+        have : Int.gcd n (p : ℤ) = 1 := by
+          show n.natAbs.gcd p = 1
+          rw [Nat.gcd_comm]
+          exact (Nat.Prime.coprime_iff_not_dvd Fact.out).2
+            (fun h => hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 h)))
+        exact this)).pow_right
+    obtain ⟨a, b, hab⟩ := hcop
+    have hu : u = a • (n • u) := by
+      calc u = (1 : ℤ) • u := (one_zsmul u).symm
+        _ = (a * n + b * (p : ℤ) ^ k) • u := by rw [hab]
+        _ = a • (n • u) + b • (((p : ℤ) ^ k) • u) := by
+            rw [add_zsmul, mul_zsmul, mul_zsmul]
+        _ = a • (n • u) + b • (0 : G) := by
+            congr 2
+            have : (((p : ℤ) ^ k) • u) = (p ^ k : ℕ) • u := by
+              rw [← Int.natCast_pow, natCast_zsmul]
+            rw [this, hk]
+        _ = a • (n • u) := by simp
+    rw [hu]
+    exact (ulmSubgroup p β).zsmul_mem hmem a
+  · intro hmem
+    exact (ulmSubgroup p β).zsmul_mem hmem n
+
+/-- Multiplication by an integer prime to `p` preserves Ulm height. -/
+lemma ulmHeight_zsmul [Fact p.Prime] (hprim : IsPrimaryPGroup p G)
+    {n : ℤ} (hn : ¬ (p : ℤ) ∣ n) (u : G) :
+    ulmHeight p (n • u) = ulmHeight p u := by
+  apply le_antisymm
+  · exact ulmHeight_le_of_mem_imp p _ _
+      (fun γ h => (mem_ulmSubgroup_zsmul_iff p hprim hn u γ).mp h)
+  · exact ulmHeight_le_of_mem_imp p _ _
+      (fun γ h => (mem_ulmSubgroup_zsmul_iff p hprim hn u γ).mpr h)
+
 /-- For an element `g` of the `p`-socle (`p • g = 0`), membership of `n • g` in a
 Ulm subgroup is equivalent to membership of `g`, provided `p ∤ n`.
 Proof: Bezout gives `a * n + b * p = 1`, so `g = a • (n • g) + b • (p • g) = a • (n • g)`. -/
