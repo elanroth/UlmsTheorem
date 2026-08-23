@@ -444,6 +444,39 @@ structure UlmStage where
   e : A ≃+ B
   hφ : IsHeightPresOn p e.toAddMonoidHom
 
+/-- The exact local interface used by Kaplansky target selection at height
+`α`.  Only filtration preservation at `α`, `α+1`, and `α+2` enters the
+range argument.  Keeping this separate from `UlmStage` lets cutoff-preserving
+ACM stages use the same construction below their cutoff. -/
+structure UlmStageAt (α : Ordinal.{0}) where
+  A : AddSubgroup G
+  B : AddSubgroup H
+  hAfinite : Set.Finite (A : Set G)
+  hBfinite : Set.Finite (B : Set H)
+  e : A ≃+ B
+  hφ_at : ∀ x : A,
+    ((x : G) ∈ ulmSubgroup p α (G := G) ↔
+      (e x : H) ∈ ulmSubgroup p α (G := H))
+  hφ_succ : ∀ x : A,
+    ((x : G) ∈ ulmSubgroup p (Order.succ α) (G := G) ↔
+      (e x : H) ∈ ulmSubgroup p (Order.succ α) (G := H))
+  hφ_succSucc : ∀ x : A,
+    ((x : G) ∈ ulmSubgroup p (Order.succ (Order.succ α)) (G := G) ↔
+      (e x : H) ∈ ulmSubgroup p (Order.succ (Order.succ α)) (G := H))
+
+/-- A globally height-preserving stage supplies the local three-level
+interface at every height. -/
+def UlmStage.at (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    UlmStageAt p (G := G) (H := H) α where
+  A := s.A
+  B := s.B
+  hAfinite := s.hAfinite
+  hBfinite := s.hBfinite
+  e := s.e
+  hφ_at := fun x ↦ s.hφ x α
+  hφ_succ := fun x ↦ s.hφ x (Order.succ α)
+  hφ_succSucc := fun x ↦ s.hφ x (Order.succ (Order.succ α))
+
 /-- Reverse a finite partial isomorphism. -/
 noncomputable def UlmStage.symm (s : UlmStage p (G := G) (H := H)) :
     UlmStage p (G := H) (H := G) where
@@ -459,12 +492,12 @@ noncomputable def UlmStage.symm (s : UlmStage p (G := G) (H := H)) :
 /-- A height-preserving stage isomorphism identifies Kaplansky's starred
 subgroups on the two sides. -/
 noncomputable def kaplanskyStarEquiv
-    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α) :
     kaplanskyStar p s.A α ≃+ kaplanskyStar p s.B α where
   toFun x := by
     refine ⟨(s.e ⟨(x : G), x.property.1⟩ : H), ?_⟩
     refine ⟨(s.e ⟨(x : G), x.property.1⟩).prop,
-      (s.hφ ⟨(x : G), x.property.1⟩ α).mp x.property.2.1, ?_⟩
+      (s.hφ_at ⟨(x : G), x.property.1⟩).mp x.property.2.1, ?_⟩
     have hpxA : p • (x : G) ∈ s.A := s.A.nsmul_mem x.property.1 p
     have hmap :
         p • (s.e ⟨(x : G), x.property.1⟩ : H) =
@@ -474,24 +507,22 @@ noncomputable def kaplanskyStarEquiv
           (map_nsmul s.e p ⟨(x : G), x.property.1⟩)).symm
     rw [hmap]
     exact
-      (s.hφ ⟨p • (x : G), hpxA⟩
-        (Order.succ (Order.succ α))).mp x.property.2.2
+      (s.hφ_succSucc ⟨p • (x : G), hpxA⟩).mp x.property.2.2
   invFun y := by
     refine ⟨(s.e.symm ⟨(y : H), y.property.1⟩ : G), ?_⟩
     have heinv :
         s.e (s.e.symm ⟨(y : H), y.property.1⟩) =
           ⟨(y : H), y.property.1⟩ := s.e.apply_symm_apply _
     refine ⟨(s.e.symm ⟨(y : H), y.property.1⟩).prop, ?_, ?_⟩
-    · apply (s.hφ (s.e.symm ⟨(y : H), y.property.1⟩) α).mpr
+    · apply (s.hφ_at (s.e.symm ⟨(y : H), y.property.1⟩)).mpr
       simpa [heinv] using y.property.2.1
     ·
       have hpxA :
           p • (s.e.symm ⟨(y : H), y.property.1⟩ : G) ∈ s.A :=
         s.A.nsmul_mem (s.e.symm ⟨(y : H), y.property.1⟩).prop p
       apply
-        (s.hφ
-          ⟨p • (s.e.symm ⟨(y : H), y.property.1⟩ : G), hpxA⟩
-          (Order.succ (Order.succ α))).mpr
+        (s.hφ_succSucc
+          ⟨p • (s.e.symm ⟨(y : H), y.property.1⟩ : G), hpxA⟩).mpr
       have hmap :
           (s.e
             ⟨p • (s.e.symm ⟨(y : H), y.property.1⟩ : G), hpxA⟩ : H) =
@@ -519,35 +550,35 @@ noncomputable def kaplanskyStarEquiv
 
 omit hp in
 lemma kaplanskyStarEquiv_map_stageAtSucc
-    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α) :
     (stageAtSuccInStar p s.A α).map
-        (kaplanskyStarEquiv p s α).toAddMonoidHom =
+        (kaplanskyStarEquiv p s).toAddMonoidHom =
       stageAtSuccInStar p s.B α := by
   ext y
   constructor
   · rintro ⟨x, hx, rfl⟩
     change
-      ((kaplanskyStarEquiv p s α x : kaplanskyStar p s.B α) : H) ∈
+      ((kaplanskyStarEquiv p s x : kaplanskyStar p s.B α) : H) ∈
         stageAt p s.B (Order.succ α)
     change (x : G) ∈ stageAt p s.A (Order.succ α) at hx
-    refine ⟨(kaplanskyStarEquiv p s α x).property.1, ?_⟩
+    refine ⟨(kaplanskyStarEquiv p s x).property.1, ?_⟩
     change
       (s.e ⟨(x : G), x.property.1⟩ : H) ∈
         ulmSubgroup p (Order.succ α)
-    exact (s.hφ ⟨(x : G), x.property.1⟩ (Order.succ α)).mp hx.2
+    exact (s.hφ_succ ⟨(x : G), x.property.1⟩).mp hx.2
   · intro hy
     let x : kaplanskyStar p s.A α :=
-      (kaplanskyStarEquiv p s α).symm y
-    refine ⟨x, ?_, (kaplanskyStarEquiv p s α).apply_symm_apply y⟩
+      (kaplanskyStarEquiv p s).symm y
+    refine ⟨x, ?_, (kaplanskyStarEquiv p s).apply_symm_apply y⟩
     change (x : G) ∈ stageAt p s.A (Order.succ α)
     change (y : H) ∈ stageAt p s.B (Order.succ α) at hy
     refine ⟨x.property.1, ?_⟩
-    apply (s.hφ ⟨(x : G), x.property.1⟩ (Order.succ α)).mpr
+    apply (s.hφ_succ ⟨(x : G), x.property.1⟩).mpr
     have heq :
         (s.e ⟨(x : G), x.property.1⟩ : H) = (y : H) := by
       simpa [x, kaplanskyStarEquiv] using
         congrArg Subtype.val
-          ((kaplanskyStarEquiv p s α).apply_symm_apply y)
+          ((kaplanskyStarEquiv p s).apply_symm_apply y)
     change
       (s.e ⟨(x : G), x.property.1⟩ : H) ∈
         ulmSubgroup p (Order.succ α)
@@ -557,22 +588,22 @@ lemma kaplanskyStarEquiv_map_stageAtSucc
 /-- The stage isomorphism induces an additive equivalence between the finite
 source quotients in Kaplansky's range maps. -/
 noncomputable def kaplanskyDomainEquiv
-    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α) :
     kaplanskyDomainQuotient p s.A α ≃+
       kaplanskyDomainQuotient p s.B α :=
   QuotientAddGroup.congr
     (stageAtSuccInStar p s.A α)
     (stageAtSuccInStar p s.B α)
-    (kaplanskyStarEquiv p s α)
-    (kaplanskyStarEquiv_map_stageAtSucc p s α)
+    (kaplanskyStarEquiv p s)
+    (kaplanskyStarEquiv_map_stageAtSucc p s)
 
 /-- Corresponding finite stages give Kaplansky source quotients of equal
 `ZMod p`-dimension. -/
 theorem kaplanskyDomain_rank_eq
-    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0}) :
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α) :
     Module.rank (ZMod p) (kaplanskyDomainQuotient p s.A α) =
       Module.rank (ZMod p) (kaplanskyDomainQuotient p s.B α) := by
-  let E := kaplanskyDomainEquiv p s α
+  let E := kaplanskyDomainEquiv p s
   let L :
       kaplanskyDomainQuotient p s.A α →ₗ[ZMod p]
         kaplanskyDomainQuotient p s.B α :=
@@ -609,7 +640,7 @@ height-preserving stage when the ordinary Ulm invariants at `α` agree.
 Finiteness of the source quotient is essential here: injective endomorphisms
 of infinite-dimensional spaces need not be onto. -/
 theorem kaplansky_not_surjective_transfer
-    (s : UlmStage p (G := G) (H := H)) (α : Ordinal.{0})
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α)
     (hinv :
       ulmInvariant p α (G := G) = ulmInvariant p α (G := H))
     (hGroom : ¬ Function.Surjective (kaplanskyMap p s.A α)) :
@@ -638,7 +669,7 @@ theorem kaplansky_not_surjective_transfer
       Module.rank (ZMod p) DA = Module.rank (ZMod p) PH := by
     calc
       Module.rank (ZMod p) DA = Module.rank (ZMod p) DB :=
-        kaplanskyDomain_rank_eq p s α
+        kaplanskyDomain_rank_eq p s
       _ = Module.rank (ZMod p) PH := LinearEquiv.rank_eq EH
   have hrankDA_PG :
       Module.rank (ZMod p) DA = Module.rank (ZMod p) PG := by
@@ -1295,8 +1326,8 @@ If `p • x` has exact height `α+1`, any height-`α` root of its image is
 automatically proper over the target stage.  The proof uses the second
 normalization of `x` to rule out a higher translate. -/
 lemma exists_kaplanskyTarget_caseI
-    (s : UlmStage p (G := G) (H := H))
-    {x : G} {α : Ordinal.{0}}
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α)
+    {x : G}
     (hpxA : p • x ∈ s.A)
     (hxα : x ∈ ulmSubgroup p α (G := G))
     (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
@@ -1316,12 +1347,12 @@ lemma exists_kaplanskyTarget_caseI
     rw [ulmSubgroup_succ]
     exact ⟨x, hxα, rfl⟩
   have hzSucc : z ∈ ulmSubgroup p (Order.succ α) (G := H) := by
-    exact (s.hφ ⟨p • x, hpxA⟩ (Order.succ α)).mp hpxSucc
+    exact (s.hφ_succ ⟨p • x, hpxA⟩).mp hpxSucc
   have hzSuccSucc :
       z ∉ ulmSubgroup p (Order.succ (Order.succ α)) (G := H) := by
     intro hz
     exact hcaseI
-      ((s.hφ ⟨p • x, hpxA⟩ (Order.succ (Order.succ α))).mpr hz)
+      ((s.hφ_succSucc ⟨p • x, hpxA⟩).mpr hz)
   rw [ulmSubgroup_succ] at hzSucc
   obtain ⟨w, hwα, hpw⟩ := hzSucc
   have hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H) := by
@@ -1345,7 +1376,7 @@ lemma exists_kaplanskyTarget_caseI
   let a : s.A := s.e.symm t
   have hea : s.e a = t := by simp [a]
   have haα : (a : G) ∈ ulmSubgroup p α (G := G) := by
-    apply (s.hφ a α).mpr
+    apply (s.hφ_at a).mpr
     simpa [hea] using htα
   let y : G := x + (a : G)
   have hyα : y ∈ ulmSubgroup p α (G := G) :=
@@ -1402,7 +1433,7 @@ lemma exists_kaplanskyTarget_caseI
   have hpySuccSucc :
       p • y ∈
         ulmSubgroup p (Order.succ (Order.succ α)) (G := G) := by
-    apply (s.hφ pyA (Order.succ (Order.succ α))).mpr
+    apply (s.hφ_succSucc pyA).mpr
     simpa [hepy] using hpwt
   have hlower :
       ((Order.succ (Order.succ α) : Ordinal.{0}) :
@@ -1431,8 +1462,8 @@ proper exact-height socle element.  The canonical range lemma and equality of
 the ordinary Ulm invariant transfer the resulting room to the target side;
 adding that target socle element to a higher root gives the required image. -/
 lemma exists_kaplanskyTarget_caseII
-    (s : UlmStage p (G := G) (H := H))
-    {x : G} {α : Ordinal.{0}}
+    {α : Ordinal.{0}} (s : UlmStageAt p (G := G) (H := H) α)
+    {x : G}
     (hinv :
       ulmInvariant p α (G := G) = ulmInvariant p α (G := H))
     (hpxA : p • x ∈ s.A)
@@ -1496,7 +1527,7 @@ lemma exists_kaplanskyTarget_caseII
     (kaplanskyMap_not_surjective_iff_proper p s.A α).2
       ⟨q, hqP, hqSucc, hqProper⟩
   have hHroom : ¬ Function.Surjective (kaplanskyMap p s.B α) :=
-    kaplansky_not_surjective_transfer p s α hinv hGroom
+    kaplansky_not_surjective_transfer p s hinv hGroom
   obtain ⟨w₀, hw₀P, hw₀Succ, hw₀Proper⟩ :=
     (kaplanskyMap_not_surjective_iff_proper p s.B α).1 hHroom
   have hpw₀ : p • w₀ = 0 := (mem_pSocleAt p α w₀).1 hw₀P |>.1
@@ -1505,8 +1536,7 @@ lemma exists_kaplanskyTarget_caseII
   let z : H := s.e ⟨p • x, hpxA⟩
   have hzSuccSucc :
       z ∈ ulmSubgroup p (Order.succ (Order.succ α)) (G := H) :=
-    (s.hφ ⟨p • x, hpxA⟩
-      (Order.succ (Order.succ α))).mp hcaseII
+    (s.hφ_succSucc ⟨p • x, hpxA⟩).mp hcaseII
   rw [ulmSubgroup_succ] at hzSuccSucc
   obtain ⟨w₂, hw₂Succ, hpw₂⟩ := hzSuccSucc
   let w : H := w₀ + w₂
@@ -1549,6 +1579,47 @@ lemma exists_kaplanskyTarget_caseII
     rw [← hw₀Height]
     exact hlower.trans hupper
   exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
+
+/-- **Kaplansky's one-step extension from an already normalized element.**
+
+The full `kaplansky_extend_one` theorem below first searches a finite coset for
+such an `x`.  Once `x` is given with exact height `α`, properness, and the
+maximal-`p x` normalization, target selection uses the ordinary Ulm invariant
+only at this single height `α`.  This height-local form is the one needed by
+the below-base band of the ACM construction, where invariant equality is known
+only below a cutoff. -/
+lemma kaplansky_extend_one_of_normalized
+    (hG : IsReducedPGroup p G)
+    (s : UlmStage p (G := G) (H := H))
+    {x : G} {α : Ordinal.{0}}
+    (hinv : ulmInvariant p α (G := G) = ulmInvariant p α (G := H))
+    (hx_notin : x ∉ s.A)
+    (hpxA : p • x ∈ s.A)
+    (hxα : x ∈ ulmSubgroup p α (G := G))
+    (hxSucc : x ∉ ulmSubgroup p (Order.succ α) (G := G))
+    (hxProper : IsProper p s.A x)
+    (hpxMax : ∀ y : G, y - x ∈ s.A → IsProper p s.A y →
+      ulmHeight p (p • y) ≤ ulmHeight p (p • x)) :
+    ∃ (s' : UlmStage p (G := G) (H := H))
+      (hAA : s.A ≤ s'.A) (_hBB : s.B ≤ s'.B),
+      x ∈ s'.A ∧
+      ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
+  obtain ⟨w, hpw, hwα, hwSucc, hwProper⟩ :
+      ∃ w : H,
+        p • w = (s.e ⟨p • x, hpxA⟩ : H) ∧
+        w ∈ ulmSubgroup p α (G := H) ∧
+        w ∉ ulmSubgroup p (Order.succ α) (G := H) ∧
+        IsProper p s.B w := by
+    by_cases hcaseII :
+        p • x ∈
+          ulmSubgroup p (Order.succ (Order.succ α)) (G := G)
+    · exact exists_kaplanskyTarget_caseII p (UlmStage.at (p := p) s α) hinv hpxA
+        hxα hxSucc hxProper hcaseII
+    · exact exists_kaplanskyTarget_caseI p (UlmStage.at (p := p) s α) hpxA
+        hxα hxSucc hxProper
+        hpxMax hcaseII
+  exact kaplansky_extend_one_of_target p hG s hx_notin hpxA hpw
+    hxα hxSucc hwα hwSucc hxProper hwProper
 
 /-- Kaplansky's page-30 one-step extension.
 
@@ -1597,24 +1668,9 @@ lemma kaplansky_extend_one
       rw [this]
       exact s.A.add_mem hyxA hxgA
     · exact hyProper
-  obtain ⟨w, hpw, hwα, hwSucc, hwProper⟩ :
-      ∃ w : H,
-        p • w = (s.e ⟨p • x, hpxA⟩ : H) ∧
-        w ∈ ulmSubgroup p α (G := H) ∧
-        w ∉ ulmSubgroup p (Order.succ α) (G := H) ∧
-        IsProper p s.B w := by
-    by_cases hcaseII :
-        p • x ∈
-          ulmSubgroup p (Order.succ (Order.succ α)) (G := G)
-    · exact
-        exists_kaplanskyTarget_caseII p s (hinv α) hpxA
-          hxα hxSucc hxProper hcaseII
-    · exact
-        exists_kaplanskyTarget_caseI p s hpxA hxα hxSucc hxProper
-          hpxMax hcaseII
   obtain ⟨s', hAA, hBB, hxs', hext⟩ :=
-    kaplansky_extend_one_of_target p hG s hxA hpxA hpw
-      hxα hxSucc hwα hwSucc hxProper hwProper
+    kaplansky_extend_one_of_normalized p hG s (hinv α) hxA hpxA
+      hxα hxSucc hxProper hpxMax
   refine ⟨s', hAA, hBB, ?_, hext⟩
   have hxgA' : x - g ∈ s'.A := hAA hxgA
   have hgrepr : g = x - (x - g) := by abel
