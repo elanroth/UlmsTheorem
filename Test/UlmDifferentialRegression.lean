@@ -12,6 +12,34 @@ compile.
 
   Z/4 + Z/4 : socle = {0,2}^2 = 2G exactly, so P_0 = P_1 and f(0) = 0.
   Z/2 + Z/8 : (1,0) is in the socle but not in 2G, so P_0 != P_1 and f(0) != 0.
+
+Why this pair rather than a cheaper one: both groups have order 16, two cyclic
+summands, and socle dimension 2. Only the Ulm invariant separates them, so the
+test cannot be passed by an invariant that has collapsed to the order, the
+summand count, or the socle dimension. For a finite direct sum of cyclics,
+`f(n)` is the number of summands of order `p^(n+1)` -- note the off-by-one --
+so the full vectors are `0,2,0,...` and `1,0,1,...`. That formula is stated
+verbatim in E. A. Walker, "Ulm's Theorem for Totally Projective Groups",
+Proc. Amer. Math. Soc. 37 (1973), 387-392, at p. 387, which also gives the
+filtration, the invariant, and the classical statement in quotable form.
+
+Two checks that cannot live in a build, recorded here so they are not lost:
+
+* **Countability is load-bearing.** The theorem is FALSE without it, so a
+  formalization that did not require it would be proving a false statement.
+  Fuchs, *Abelian Groups* (Pergamon 1960), has a section titled
+  "Non-isomorphic groups with the same Ulm sequence" (Sec. 39, p. 134) giving
+  a counterexample at cardinality aleph_1; Crawley, Pacific J. Math. 22 (1967)
+  235-239, records the same failure. Stating `ulm_theorem`'s conclusion without
+  `[Countable G] [Countable H]` and discharging it with `ulm_theorem` fails on
+  `failed to synthesize Countable G`, and the proof consumes countability for
+  real at `Lib/Ulm/Classification.lean:283` via `exists_surjective_nat`.
+* **No external artifact exists to test against.** As of 2026-08-27 Ulm's
+  theorem is not formalized in Mathlib, the Isabelle AFP, Coq, Mizar, Metamath,
+  or any other Lean project, and Mathlib's finite-abelian structure theorem is
+  existence-only -- it never proves the exponent multiset is an invariant, so it
+  cannot serve as an independent isomorphism oracle. Ground truth has to come
+  from hand-computed finite instances like this one.
 -/
 
 namespace UlmDifferentialRegression
