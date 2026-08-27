@@ -1,20 +1,19 @@
 import Mathlib
 
 /-!
-# Basic imports and shared notation — ACM project
+# Basic imports and shared notation
 
 This file is imported by all modules. It carries shared notation and
 small utility lemmas that do not belong to a specific submodule.
 
 ## Project scope
 
-We formalize:
-1. **Ulm's theorem** (novel Lean formalization): two countable reduced
-   abelian p-groups are isomorphic iff their Ulm invariants agree at every ordinal.
-2. **Scott complexity** of countable reduced abelian p-groups, following
-   Alvir–Csima–MacLean (ACM).  The main goal is a sharp classification of
-   Σ/Π/d-Σ complexity of Scott sentences for groups of Ulm length ω·γ+n,
-   including the rigid-tail case f(ω·γ) = … = f(ω·γ+n−2) = 0.
+We formalize **Ulm's theorem**: two countable reduced abelian p-groups are
+isomorphic iff their Ulm invariants agree at every ordinal.
+
+The supporting layer — the transfinite Ulm filtration `p^α G`, the socle,
+heights, purity, and Kaplansky's extension lemma — lives in `Lib/PGroups/` and
+`Lib/Ulm/`, and is reusable independently of the theorem.
 
 ## Notation
 

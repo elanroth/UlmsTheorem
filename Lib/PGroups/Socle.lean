@@ -4,7 +4,6 @@ import Lib.PGroups.Defs
 # Socle-level constructions
 
 This file contains the p-socle and its interaction with the Ulm filtration.
-These definitions are shared by the Ulm-theorem and Scott-complexity tracks.
 -/
 
 open Ordinal
