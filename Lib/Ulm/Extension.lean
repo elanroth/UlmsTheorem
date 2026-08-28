@@ -1329,119 +1329,65 @@ lemma exists_kaplanskyTarget_caseI
       w ∈ ulmSubgroup p α (G := H) ∧
       w ∉ ulmSubgroup p (Order.succ α) (G := H) ∧
       IsProper p s.B w := by
-  let z : H := s.e ⟨p • x, hpxA⟩
-  have hpxSucc : p • x ∈
-      ulmSubgroup p (Order.succ α) (G := G) := by
-    rw [ulmSubgroup_succ]
-    exact ⟨x, hxα, rfl⟩
-  have hzSucc : z ∈ ulmSubgroup p (Order.succ α) (G := H) := by
-    exact (s.hφ_succ ⟨p • x, hpxA⟩).mp hpxSucc
+  have hxHeight : ulmHeight p x = (α : WithTop Ordinal.{0}) :=
+    ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc
+  -- `x ∈ G_α` puts `p • x` in `G_{α+1}`, so its image has a root `w ∈ H_α`.
+  have hzSucc : (s.e ⟨p • x, hpxA⟩ : H) ∈ ulmSubgroup p (Order.succ α) (G := H) :=
+    (s.hφ_succ _).mp (by rw [ulmSubgroup_succ]; exact ⟨x, hxα, rfl⟩)
+  -- Case I says `p • x ∉ G_{α+2}`, so the root has exact height `α`.
   have hzSuccSucc :
-      z ∉ ulmSubgroup p (Order.succ (Order.succ α)) (G := H) := by
-    intro hz
-    exact hcaseI
-      ((s.hφ_succSucc ⟨p • x, hpxA⟩).mpr hz)
+      (s.e ⟨p • x, hpxA⟩ : H) ∉ ulmSubgroup p (Order.succ (Order.succ α)) (G := H) :=
+    fun hz ↦ hcaseI ((s.hφ_succSucc _).mpr hz)
   rw [ulmSubgroup_succ] at hzSucc
   obtain ⟨w, hwα, hpw⟩ := hzSucc
-  have hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H) := by
-    intro hw
-    apply hzSuccSucc
-    rw [← hpw, ulmSubgroup_succ]
-    exact ⟨w, hw, rfl⟩
-  have hwHeight :
-      ulmHeight p w = (α : WithTop Ordinal.{0}) :=
-    ulmHeight_eq_of_mem_not_mem_succ p w α hwα hwSucc
+  have hwSucc : w ∉ ulmSubgroup p (Order.succ α) (G := H) := fun hw ↦
+    hzSuccSucc (by rw [← hpw, ulmSubgroup_succ]; exact ⟨w, hw, rfl⟩)
   refine ⟨w, hpw, hwα, hwSucc, ?_⟩
+  -- Properness of `w`: a target translate `w + t` of height `> α` would pull
+  -- back to a translate of `x` whose `p`-multiple beats the maximal height.
   intro t
-  rw [hwHeight]
-  apply ulmHeight_le_of_not_mem_succ p (w + (t : H)) α
-  intro hwtSucc
-  have hwtα : w + (t : H) ∈ ulmSubgroup p α (G := H) :=
-    ulmSubgroup_antitone p (Order.le_succ α) hwtSucc
+  rw [ulmHeight_eq_of_mem_not_mem_succ p w α hwα hwSucc]
+  refine ulmHeight_le_of_not_mem_succ p (w + (t : H)) α fun hwtSucc ↦ ?_
   have htα : (t : H) ∈ ulmSubgroup p α (G := H) := by
-    have := (ulmSubgroup p α (G := H)).sub_mem hwtα hwα
-    simpa using this
+    simpa using (ulmSubgroup p α (G := H)).sub_mem
+      (ulmSubgroup_antitone p (Order.le_succ α) hwtSucc) hwα
   let a : s.A := s.e.symm t
   have hea : s.e a = t := by simp [a]
-  have haα : (a : G) ∈ ulmSubgroup p α (G := G) := by
-    apply (s.hφ_at a).mpr
-    simpa [hea] using htα
+  have haα : (a : G) ∈ ulmSubgroup p α (G := G) :=
+    (s.hφ_at a).mpr (by simpa [hea] using htα)
   let y : G := x + (a : G)
-  have hyα : y ∈ ulmSubgroup p α (G := G) :=
-    (ulmSubgroup p α).add_mem hxα haα
-  have hySucc : y ∉ ulmSubgroup p (Order.succ α) (G := G) := by
-    intro hy
-    have hlower :
-        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
-          ulmHeight p y :=
-      coe_le_ulmHeight_of_mem p y (Order.succ α) hy
-    have hproper := hxProper a
-    have hxHeight :=
-      ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc
-    have hbad :
-        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
-          (α : WithTop Ordinal.{0}) := by
+  have hyα : y ∈ ulmSubgroup p α (G := G) := (ulmSubgroup p α).add_mem hxα haα
+  have hySucc : y ∉ ulmSubgroup p (Order.succ α) (G := G) := fun hy ↦ by
+    have hbad : ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) ≤
+        (α : WithTop Ordinal.{0}) := by
       rw [← hxHeight]
-      exact hlower.trans hproper
-    exact (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α))) hbad
-  have hyHeight :
-      ulmHeight p y = (α : WithTop Ordinal.{0}) :=
+      exact (coe_le_ulmHeight_of_mem p y (Order.succ α) hy).trans (hxProper a)
+    exact absurd hbad (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α)))
+  have hyHeight : ulmHeight p y = (α : WithTop Ordinal.{0}) :=
     ulmHeight_eq_of_mem_not_mem_succ p y α hyα hySucc
-  have hyProper : IsProper p s.A y := by
-    intro b
-    rw [hyHeight, ← ulmHeight_eq_of_mem_not_mem_succ p x α hxα hxSucc]
-    have hxb := hxProper (a + b)
-    simpa [y, add_assoc] using hxb
-  have hycoset : y - x ∈ s.A := by
-    simp [y]
+  have hyProper : IsProper p s.A y := fun b ↦ by
+    rw [hyHeight, ← hxHeight]
+    simpa [y, add_assoc] using hxProper (a + b)
+  have hycoset : y - x ∈ s.A := by simp [y]
   have hpyA : p • y ∈ s.A := by
-    change p • (x + (a : G)) ∈ s.A
-    rw [smul_add]
-    exact s.A.add_mem hpxA (s.A.nsmul_mem a.prop p)
-  let pyA : s.A := ⟨p • y, hpyA⟩
-  have hepy :
-      (s.e pyA : H) = p • (w + (t : H)) := by
-    change (s.e ⟨p • (x + (a : G)), hpyA⟩ : H) =
-      p • (w + (t : H))
-    have hdecomp :
-        (⟨p • (x + (a : G)), hpyA⟩ : s.A) =
-          ⟨p • x, hpxA⟩ + p • a := by
-      apply Subtype.ext
-      simp [smul_add]
-    rw [hdecomp, map_add, map_nsmul]
-    change (s.e ⟨p • x, hpxA⟩ : H) +
-      p • (s.e a : H) = p • (w + (t : H))
-    change z + p • (s.e a : H) = p • (w + (t : H))
-    rw [← hpw, hea, smul_add]
-  have hpwt :
-      p • (w + (t : H)) ∈
-        ulmSubgroup p (Order.succ (Order.succ α)) (G := H) := by
-    rw [ulmSubgroup_succ]
-    exact ⟨w + (t : H), hwtSucc, rfl⟩
-  have hpySuccSucc :
-      p • y ∈
-        ulmSubgroup p (Order.succ (Order.succ α)) (G := G) := by
-    apply (s.hφ_succSucc pyA).mpr
-    simpa [hepy] using hpwt
-  have hlower :
-      ((Order.succ (Order.succ α) : Ordinal.{0}) :
-        WithTop Ordinal.{0}) ≤ ulmHeight p (p • y) :=
-    coe_le_ulmHeight_of_mem p (p • y)
-      (Order.succ (Order.succ α)) hpySuccSucc
-  have hupper1 :=
-    hpxMax y hycoset hyProper
-  have hupper2 :
-      ulmHeight p (p • x) ≤
-        ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) :=
-    ulmHeight_le_of_not_mem_succ p (p • x) (Order.succ α) hcaseI
-  have hbad :
-      ((Order.succ (Order.succ α) : Ordinal.{0}) :
-        WithTop Ordinal.{0}) ≤
-      ((Order.succ α : Ordinal.{0}) : WithTop Ordinal.{0}) :=
-    hlower.trans (hupper1.trans hupper2)
-  exact
-    (not_le_of_gt
-      (WithTop.coe_lt_coe.mpr (Order.lt_succ (Order.succ α)))) hbad
+    simpa [y, smul_add] using s.A.add_mem hpxA (s.A.nsmul_mem a.prop p)
+  -- The image of `p • y` is `p • (w + t)`, which lies in `H_{α+2}`.
+  have hepy : (s.e ⟨p • y, hpyA⟩ : H) = p • (w + (t : H)) := by
+    have hdecomp : (⟨p • y, hpyA⟩ : s.A) = ⟨p • x, hpxA⟩ + p • a :=
+      Subtype.ext (by simp [y, smul_add])
+    rw [hdecomp, map_add, map_nsmul, hea]
+    push_cast
+    rw [← hpw, smul_add]
+  have hpySuccSucc : p • y ∈ ulmSubgroup p (Order.succ (Order.succ α)) (G := G) :=
+    (s.hφ_succSucc _).mpr <| by
+      rw [hepy, ulmSubgroup_succ]
+      exact ⟨w + (t : H), hwtSucc, rfl⟩
+  -- But `y` is a proper translate of `x`, so maximality caps `h(p • y)` at `α+1`.
+  exact absurd
+    ((coe_le_ulmHeight_of_mem p (p • y) _ hpySuccSucc).trans
+      ((hpxMax y hycoset hyProper).trans
+        (ulmHeight_le_of_not_mem_succ p (p • x) (Order.succ α) hcaseI)))
+    (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ (Order.succ α))))
 
 /-- Kaplansky's Case II target construction.
 
