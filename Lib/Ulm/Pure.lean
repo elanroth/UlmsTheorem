@@ -28,20 +28,14 @@ def IsProper (S : AddSubgroup G) (x : G) : Prop :=
 lemma ulmHeight_le_of_mem_imp (x y : G)
     (h : ∀ α : Ordinal.{0},
       x ∈ ulmSubgroup p α (G := G) → y ∈ ulmSubgroup p α (G := G)) :
-    ulmHeight p x ≤ ulmHeight p y := by
-  unfold ulmHeight
-  apply iSup_le
-  intro α
-  apply iSup_le
-  intro hx
-  exact le_iSup_of_le α (le_iSup_of_le (h α hx) le_rfl)
+    ulmHeight p x ≤ ulmHeight p y :=
+  iSup₂_le fun α hx ↦ le_iSup_of_le α (le_iSup_of_le (h α hx) le_rfl)
 
 /-- Membership in `G_α` gives the corresponding lower bound on Ulm height. -/
 lemma coe_le_ulmHeight_of_mem (x : G) (α : Ordinal.{0})
     (hx : x ∈ ulmSubgroup p α (G := G)) :
-    (α : WithTop Ordinal.{0}) ≤ ulmHeight p x := by
-  unfold ulmHeight
-  exact le_iSup_of_le α (le_iSup_of_le hx le_rfl)
+    (α : WithTop Ordinal.{0}) ≤ ulmHeight p x :=
+  le_iSup_of_le α (le_iSup_of_le hx le_rfl)
 
 /-- Failure of membership at the successor of `α` bounds the Ulm height by `α`.
 
@@ -49,17 +43,10 @@ Unlike the exact-height lemma below, this does not assume membership in `G_α`.
 It is useful when properness rules out a higher representative in a coset. -/
 lemma ulmHeight_le_of_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
     (hxs : x ∉ ulmSubgroup p (Order.succ α) (G := G)) :
-    ulmHeight p x ≤ (α : WithTop Ordinal.{0}) := by
-  unfold ulmHeight
-  apply iSup_le
-  intro β
-  apply iSup_le
-  intro hxβ
-  exact WithTop.coe_le_coe.mpr (by
+    ulmHeight p x ≤ (α : WithTop Ordinal.{0}) :=
+  iSup₂_le fun β hxβ ↦ WithTop.coe_le_coe.mpr (by
     by_contra hβα
-    have hsucc : Order.succ α ≤ β :=
-      Order.succ_le_iff.mpr (lt_of_not_ge hβα)
-    exact hxs (ulmSubgroup_antitone p hsucc hxβ))
+    exact hxs (ulmSubgroup_antitone p (Order.succ_le_iff.mpr (lt_of_not_ge hβα)) hxβ))
 
 /-- **The converse of `coe_le_ulmHeight_of_mem`.**  A lower bound on the Ulm
 height is membership in the filtration: if `γ ≤ h(x)` then `x ∈ G_γ`.
@@ -102,10 +89,8 @@ theorem mem_ulmSubgroup_iff_le_ulmHeight [Fact p.Prime] (x : G) (γ : Ordinal.{0
 lemma ulmHeight_eq_of_mem_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
     (hx : x ∈ ulmSubgroup p α (G := G))
     (hxs : x ∉ ulmSubgroup p (Order.succ α) (G := G)) :
-    ulmHeight p x = (α : WithTop Ordinal.{0}) := by
-  apply le_antisymm
-  · exact ulmHeight_le_of_not_mem_succ p x α hxs
-  · exact coe_le_ulmHeight_of_mem p x α hx
+    ulmHeight p x = (α : WithTop Ordinal.{0}) :=
+  le_antisymm (ulmHeight_le_of_not_mem_succ p x α hxs) (coe_le_ulmHeight_of_mem p x α hx)
 
 /-- For an element of exact height `α`, properness over `S` says exactly that no
 `S`-translate reaches `G_(α+1)`.
@@ -172,10 +157,8 @@ or `⊤` if no such `n` exists. -/
 noncomputable def pOrder (x : G) : ℕ∞ :=
   ⨅ (n : ℕ) (_ : p ^ n • x = 0), (n : ℕ∞)
 
-@[simp] lemma pOrder_zero : pOrder p (0 : G) = 0 := by
-  apply le_antisymm
-  · exact iInf_le_of_le 0 <| iInf_le_of_le (by simp) le_rfl
-  · exact bot_le
+@[simp] lemma pOrder_zero : pOrder p (0 : G) = 0 :=
+  le_antisymm (iInf_le_of_le 0 <| iInf_le_of_le (by simp) le_rfl) bot_le
 
 lemma smul_eq_zero_iff_le_pOrder (x : G) (n : ℕ) :
     p ^ n • x = 0 ↔ pOrder p x ≤ n := by
@@ -203,6 +186,20 @@ lemma smul_eq_zero_iff_le_pOrder (x : G) (n : ℕ) :
         _ = 0 := by simp [hm]
     exact not_lt_of_ge h hlt
 
+/-- Killing `p • x` at level `n` kills `x` at level `n + 1`. -/
+lemma pOrder_le_succ_of_smul_p_le {x : G} {n : ℕ} (h : pOrder p (p • x) ≤ n) :
+    pOrder p x ≤ n + 1 :=
+  (smul_eq_zero_iff_le_pOrder (p := p) (x := x) (n + 1)).1 <| by
+    simpa [pow_succ, mul_smul] using
+      (smul_eq_zero_iff_le_pOrder (p := p) (x := p • x) n).2 h
+
+/-- The converse: killing `x` at level `n + 1` kills `p • x` at level `n`. -/
+lemma smul_p_pOrder_le_of_le_succ {x : G} {n : ℕ} (h : pOrder p x ≤ n + 1) :
+    pOrder p (p • x) ≤ n :=
+  (smul_eq_zero_iff_le_pOrder (p := p) (x := p • x) n).1 <| by
+    simpa [pow_succ, mul_smul] using
+      (smul_eq_zero_iff_le_pOrder (p := p) (x := x) (n + 1)).2 h
+
 lemma pOrder_smul_p (x : G) (hx : 0 < pOrder p x) :
     pOrder p (p • x) = pOrder p x - 1 := by
   cases hox : pOrder p x using ENat.recTopCoe with
@@ -210,15 +207,8 @@ lemma pOrder_smul_p (x : G) (hx : 0 < pOrder p x) :
       simpa [hox] using show pOrder p (p • x) = ⊤ from by
         by_contra hy
         rcases WithTop.ne_top_iff_exists.mp hy with ⟨n, hn⟩
-        have hle : pOrder p (p • x) ≤ n := by
-          rw [← hn]
-          exact le_rfl
-        have hzero : p ^ n • (p • x) = 0 :=
-          (smul_eq_zero_iff_le_pOrder (p := p) (x := p • x) n).2 hle
-        have hxzero : p ^ (n + 1) • x = 0 := by
-          simpa [pow_succ, mul_smul] using hzero
         have hxle : pOrder p x ≤ n + 1 :=
-          (smul_eq_zero_iff_le_pOrder (p := p) (x := x) (n + 1)).1 hxzero
+          pOrder_le_succ_of_smul_p_le p (by rw [← hn]; exact le_rfl)
         rw [hox] at hxle
         exact (WithTop.not_top_le_coe (n + 1) hxle).elim
   | coe n =>
@@ -226,14 +216,8 @@ lemma pOrder_smul_p (x : G) (hx : 0 < pOrder p x) :
       | zero =>
           simp [hox] at hx
       | succ n =>
-          have hzero' : p ^ (n + 1) • x = 0 := by
-            have hxle : pOrder p x ≤ n + 1 := by
-              simp [hox]
-            exact (smul_eq_zero_iff_le_pOrder (p := p) (x := x) (n + 1)).2 hxle
-          have hupper : pOrder p (p • x) ≤ n := by
-            have hzero : p ^ n • (p • x) = 0 := by
-              simpa [pow_succ, mul_smul] using hzero'
-            exact (smul_eq_zero_iff_le_pOrder (p := p) (x := p • x) n).1 hzero
+          have hupper : pOrder p (p • x) ≤ n :=
+            smul_p_pOrder_le_of_le_succ p (by simp [hox])
           cases n with
           | zero =>
               exact le_antisymm hupper bot_le
@@ -244,12 +228,7 @@ lemma pOrder_smul_p (x : G) (hx : 0 < pOrder p x) :
               have hle : pOrder p (p • x) ≤ m := by
                 simpa [Nat.succ_eq_add_one] using
                   (ENat.lt_coe_add_one_iff (m := pOrder p (p • x)) (n := m)).1 hlt
-              have hzero : p ^ m • (p • x) = 0 :=
-                (smul_eq_zero_iff_le_pOrder (p := p) (x := p • x) m).2 hle
-              have hxzero : p ^ (m + 1) • x = 0 := by
-                simpa [pow_succ, mul_smul] using hzero
-              have hxle : pOrder p x ≤ m + 1 :=
-                (smul_eq_zero_iff_le_pOrder (p := p) (x := x) (n := m + 1)).1 hxzero
+              have hxle : pOrder p x ≤ m + 1 := pOrder_le_succ_of_smul_p_le p hle
               rw [hox] at hxle
               exact (not_le_of_gt <| by
                 simpa using (ENat.lt_coe_add_one_iff (m := (m : ℕ∞)) (n := m)).2 le_rfl) hxle |>.elim
@@ -274,15 +253,12 @@ def IsIsotype (A : AddSubgroup G) : Prop :=
   ∀ (x : A) (α : Ordinal.{0}),
     (x : G) ∈ ulmSubgroup p α (G := G) ↔ x ∈ ulmSubgroup p α (G := A)
 
-lemma IsPure_bot : IsPure p (⊥ : AddSubgroup G) := by
-  intro n x hx
-  refine ⟨0, Subsingleton.elim _ _⟩
+lemma IsPure_bot : IsPure p (⊥ : AddSubgroup G) :=
+  fun _ _ _ ↦ ⟨0, Subsingleton.elim _ _⟩
 
-lemma IsPure_top : IsPure p (⊤ : AddSubgroup G) := by
-  intro n x hx
-  rcases hx with ⟨y, hy⟩
-  refine ⟨⟨y, by simp⟩, ?_⟩
-  exact Subtype.ext hy
+lemma IsPure_top : IsPure p (⊤ : AddSubgroup G) := fun _ _ hx ↦ by
+  obtain ⟨y, hy⟩ := hx
+  exact ⟨⟨y, by simp⟩, Subtype.ext hy⟩
 
 lemma IsIsotype.isPure [Fact p.Prime] {A : AddSubgroup G} (hA : IsIsotype p A) :
     IsPure p A := by
@@ -292,22 +268,15 @@ lemma IsIsotype.isPure [Fact p.Prime] {A : AddSubgroup G} (hA : IsIsotype p A) :
   exact (hA x n).mp hx
 
 lemma ulmHeight_subgroup_le_ambient [Fact p.Prime] {A : AddSubgroup G} (x : A) :
-    ulmHeight p x (G := A) ≤ ulmHeight p (x : G) := by
-  refine iSup₂_le ?_
-  intro α hx
-  have hx' : (x : G) ∈ ulmSubgroup p α (G := G) := by
-    exact map_ulmSubgroup_le (p := p) (φ := A.subtype) α ⟨x, hx, rfl⟩
-  exact le_iSup_of_le α <| le_iSup_of_le hx' le_rfl
+    ulmHeight p x (G := A) ≤ ulmHeight p (x : G) :=
+  iSup₂_le fun α hx ↦ le_iSup_of_le α <| le_iSup_of_le
+    (map_ulmSubgroup_le (p := p) (φ := A.subtype) α ⟨x, hx, rfl⟩) le_rfl
 
 lemma IsIsotype.ulmHeight_eq {A : AddSubgroup G} (hA : IsIsotype p A) (x : A) :
-    ulmHeight p (x : G) = ulmHeight p x (G := A) := by
-  apply le_antisymm
-  · refine iSup₂_le ?_
-    intro α hx
-    exact le_iSup_of_le α <| le_iSup_of_le ((hA x α).mp hx) le_rfl
-  · refine iSup₂_le ?_
-    intro α hx
-    exact le_iSup_of_le α <| le_iSup_of_le ((hA x α).mpr hx) le_rfl
+    ulmHeight p (x : G) = ulmHeight p x (G := A) :=
+  le_antisymm
+    (iSup₂_le fun α hx ↦ le_iSup_of_le α <| le_iSup_of_le ((hA x α).mp hx) le_rfl)
+    (iSup₂_le fun α hx ↦ le_iSup_of_le α <| le_iSup_of_le ((hA x α).mpr hx) le_rfl)
 
 lemma IsHeightPreserving.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
     {φ : G →+ H} (hφ : IsHeightPreserving p φ) :
@@ -328,16 +297,13 @@ lemma IsHeightPresOn.injective [Fact p.Prime] (hred : IsReducedPGroup p G)
   have hmem : (((x - y : A) : A) : G) ∈ ulmSubgroup p α (G := G) :=
     (hφ (x - y) α).mpr (by simp [hxy])
   rw [hα] at hmem
-  have hzero : ((x : G) - y : G) = 0 :=
-    AddSubgroup.mem_bot.mp hmem
-  exact sub_eq_zero.mp hzero
+  exact sub_eq_zero.mp (AddSubgroup.mem_bot.mp hmem)
 
 /-- If `a` is in a subgroup but `b` is not, their sum is not in the subgroup.
 Useful for the ultrametric argument in the extension theorem. -/
 lemma not_mem_of_mem_of_not_mem_add {S : AddSubgroup G} {a b : G}
-    (ha : a ∈ S) (hb : b ∉ S) : a + b ∉ S := by
-  intro hab
-  exact hb (by simpa using S.sub_mem hab ha)
+    (ha : a ∈ S) (hb : b ∉ S) : a + b ∉ S :=
+  fun hab ↦ hb (by simpa using S.sub_mem hab ha)
 
 /-- **Multiplication by an integer prime to `p` preserves the filtration.**
 

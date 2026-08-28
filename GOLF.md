@@ -252,3 +252,73 @@ being re-proved, and seeing that two 12-line blocks were the same argument on `G
 §4) is `↦`. New code in this pass uses `↦`, so the file is now mixed. This is a safe mechanical
 sweep but it would swamp a golf diff, so it is left as its own one-line change for Elan to approve
 rather than smuggled in here.
+
+---
+
+## Pass 5 — 2026-08-28 — the lambda-arrow sweep
+
+Mechanical, whole-repo: 43 `fun x => ` became `fun x ↦` across 10 files. Build green at 8305 jobs;
+the diff is 41 insertions against 41 deletions.
+
+Match and `induction … with` arms correctly keep `=>`: the substitution only converts an arrow that
+terminates a `fun` binder on the same line, and no binder in this repo contains an `=`. The one
+surviving `λ` is a limit ordinal inside a docstring, not lambda syntax.
+
+**A sanctioned exception to the byte-identity gate (§2 rule 4).** Three of the changed lines are
+statement lines. Lean parses `=>` and `↦` identically, so no statement changed *meaning* — but the
+gate is stated as byte-identity precisely so it cannot be argued with, and this is the first time it
+has been overridden. The override is safe only because the transformation is notational and
+whole-repo uniform. **Rule: a notation-only sweep is the one thing allowed to touch statement
+bytes, it goes in its own commit, and it is never bundled with a golf pass.**
+
+---
+
+## Pass 6 — 2026-08-28 — `Lib/Ulm/Pure.lean`
+
+**Scope.** The whole file, which no pass had touched. 30 declarations, longest proof 51 lines — a
+definitions-and-small-lemmas file, i.e. already the good kind, so the expected yield was low.
+
+| Metric | Before | After |
+|---|---|---|
+| `Lib/Ulm/Pure.lean` | 460 | 426 |
+| Declarations | 32 | 34 (two helpers added, none removed) |
+| Statements | — | **all unchanged** |
+| Linter warnings | 2 | 2 |
+| `lake build` | green, 8305 jobs | green, 8305 jobs |
+
+**What changed.** Twelve tactic proofs became terms, all on the first attempt: `apply le_antisymm`
+with two `exact` bullets → `le_antisymm a b`; `unfold ulmHeight; apply iSup_le; intro; apply iSup_le;
+intro` → `iSup₂_le fun α hx ↦ …` (the file already used `iSup₂_le` elsewhere, so this was
+inconsistency rather than discovery); `intro n x hx` → a `fun` binder.
+
+**Two more helpers, from the third instance of the same shape.** `pOrder_smul_p` converted between
+`pOrder p x ≤ n + 1` and `pOrder p (p • x) ≤ n` three separate times, each ~8 lines of
+`smul_eq_zero_iff_le_pOrder` plus `simpa [pow_succ, mul_smul]`. Both directions were used, but as
+two implications rather than an iff, so they are two lemmas:
+`pOrder_le_succ_of_smul_p_le` and `smul_p_pOrder_le_of_le_succ`. 22 lines → 5.
+
+That is now **three consecutive passes** whose largest single win was a repeated argument, and in
+all three the repetition was invisible until the whole declaration was read. It is the dominant
+defect in this corpus, well ahead of verbose tactics.
+
+**The pass's one build failure** was `by rw [← hn]` left with `↑n ≤ ↑n` open — `rw` does not close a
+`≤` goal by `rfl`. One `exact le_rfl`.
+
+**Checker note worth keeping.** The byte-identity check has to exclude the `:=` / `:= by`
+terminator, or every tactic→term conversion reads as a statement change. It also mis-slices a
+declaration whose proof begins `fun … ↦ by` on the statement line. Both were verified by hand this
+pass; the check is a guard, and per `constraints-over-conventions.md` a guard that has not been seen
+failing is not known to work.
+
+**BLOCKED, not done: eleven declarations in this file are referenced nowhere.**
+
+`IsPure_bot`, `IsPure_top`, `IsIsotype.isPure`, `IsIsotype.ulmHeight_eq`, `IsPure.map_of_heightPres`,
+`IsPure.range_of_heightPresOn`, `mem_ulmSubgroup_iff_le_ulmHeight`, `not_mem_of_mem_of_not_mem_add`,
+`pOrder_smul_p`, `pOrder_pos_of_ne_zero`, `ulmHeight_subgroup_le_ambient` — checked for both plain
+and dot-notation uses across `Lib/` and `Test/`. `pOrder_smul_p` alone is 51 lines, the file's
+longest proof.
+
+**Not deleted, deliberately.** This is a library about to be published: unused-inside-the-repo is
+not the same as unwanted, and `IsPure` / `IsIsotype` look like intended API for a file named
+`Pure.lean`. `clean-removal.md` says ask before removing rather than assume. **This is a question
+for Elan.** Deleting all eleven would take the file from 426 to roughly 300.
