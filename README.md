@@ -76,7 +76,7 @@ in E. A. Walker, "Ulm's Theorem for Totally Projective Groups", *Proc. Amer. Mat
 ## Provenance
 
 This repository was extracted from a larger private multi-project repository, retaining
-the commit history of the files kept here. Nine of the twenty-six commit messages were
+the commit history of the files kept here. Nine of the twenty-four commit messages were
 rewritten during extraction: their originals described work in a component that is not
 part of this repository, and each rewritten message says so explicitly in a trailer and
 describes only the changes to files retained here. No file contents were altered by the
@@ -84,3 +84,7 @@ extraction; the build configuration, this README, and `Test/AxiomGate.lean` are 
 
 The early history is candid about its tooling: several 2026-03 and 2026-04 commits are
 bulk AI-assisted proving passes, and are named as such.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
