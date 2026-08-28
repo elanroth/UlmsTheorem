@@ -54,8 +54,7 @@ height is membership in the filtration: if `γ ≤ h(x)` then `x ∈ G_γ`.
 The supremum defining `ulmHeight` is therefore attained whenever it is bounded by
 an ordinal, so `h(x) ≥ γ` and `x ∈ G_γ` are interchangeable.  This is the bridge
 that lets a height condition stated with `ulmHeight` be used as a filtration
-hypothesis, which is how the jump-space construction consumes clause (e) of the
-odd characterization.
+hypothesis.
 
 The three cases are genuinely different: at `0` the filtration is everything, at a
 successor the previous lemma bounds the height strictly below, and at a limit the

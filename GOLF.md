@@ -1,6 +1,6 @@
 # Golf log
 
-Passes over this repository under `maimonides/docs/lean-style.md`. Every row is a change kept only
+Golf passes over this repository. Every row is a change kept only
 because `lake build` was green, the axiom gate passed, and the statement-line diff was empty.
 
 The "disagreements" column is the point of this file: it is the evidence that confirms or kills a
