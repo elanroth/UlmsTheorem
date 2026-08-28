@@ -122,3 +122,65 @@ pulls back along `e⁻¹` to `a ∈ s.A`, and `y = x + a` is then a proper trans
 for any step here — this proof is about the local stage interface (`hφ_at` / `hφ_succ` /
 `hφ_succSucc`), which has no mathlib analogue. Tier C on this declaration was structural, not
 lemma-substitution.
+
+---
+
+## Pass 3 — 2026-08-28 — `exists_kaplanskyTarget_caseII`, and the lemma it exposed
+
+**Scope.** The sibling case, golfed the same way. It turned out to share an argument with Case I —
+and with two further sites elsewhere in the file — so this pass is the first tier-C
+*lemma-extraction*, not just restructuring.
+
+| Metric | Before | After |
+|---|---|---|
+| `exists_kaplanskyTarget_caseII` proof lines | 103 | 41 |
+| `exists_kaplanskyTarget_caseI` proof lines | 60 | 54 |
+| `Lib/Ulm/Extension.lean` | 1664 | 1577 |
+| Declarations | — | **+1** (`isProper_iff_forall_not_mem_succ`, in `Pure.lean`) |
+| Statements | — | **all byte-identical**; the statement-line diff shows exactly one `+`, the new helper |
+| `Lib.Ulm.Extension` build | 11s | 11s |
+| Linter warnings | 2 | 2 |
+| `lake build` | green, 8305 jobs | green, 8305 jobs |
+
+**The finding: one lemma was written out longhand four times.**
+
+Every occurrence had the shape *"`u` has exact height `α` and is proper over `S`; suppose a
+translate `u + c` reaches `G_{α+1}`; then `α+1 ≤ h(u+c) ≤ h(u) = α`, contradiction"* — spelled out
+each time as `have hlower / hupper / hheight / hbad`, then
+`not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α)) hbad`. About 12 lines per copy.
+
+Both directions were in use, so it is an iff, now in `Lib/Ulm/Pure.lean` next to `IsProper`:
+
+```lean
+lemma isProper_iff_forall_not_mem_succ [Fact p.Prime] (S : AddSubgroup G) {x : G}
+    {α : Ordinal.{0}} (hx : x ∈ ulmSubgroup p α (G := G))
+    (hxs : x ∉ ulmSubgroup p (Order.succ α) (G := G)) :
+    IsProper p S x ↔ ∀ c : S, x + (c : G) ∉ ulmSubgroup p (Order.succ α) (G := G)
+```
+
+It replaced four hand-written copies (Case I ×1, Case II ×2, `Extension.lean:1044` ×1) plus a fifth
+variant at `Extension.lean:383` that needed only a negated element. **19 lines added, 127 removed.**
+
+That is also the right *mathematical* statement of what properness means at a known exact height,
+which is why it belongs beside `IsProper` rather than inside either case — §1 goal 2 and goal 4
+agreeing for once.
+
+**On whether the framework scales — the actual question this pass was run to answer.**
+
+It scaled better than Pass 2, in a specific way: **Case II needed almost no fresh judgment.** The
+Pass 2 rules (`change` is a bad `let`'s receipt; hoist the twice-computed `have`; `intro h; exact`
+→ term; a chain of named inequalities is transitivity written out) applied directly, and Case II's
+proof body fell 60% against Case I's 47%. Both the helper and the rewritten Case II compiled on the
+**first** attempt, where Pass 2 needed one `push_cast` repair.
+
+The part that did *not* transfer mechanically is the part worth keeping a human on: noticing that
+four scattered blocks were the same lemma. No linter suggests that, `exact?` cannot find a lemma
+that does not exist yet, and it was only visible after reading two proofs in full. **The tiers hold
+up: A and B are automatable, C is where a person or a careful agent earns its keep.**
+
+**Disagreement between the metric and readability.** One, and it went the metric's way this time:
+`Case I` lost `hwHeight` and `hySucc`'s six-line body, both of which I had *kept* in Pass 2 on
+goal-3 grounds. Once the helper existed they stopped being load-bearing steps and became
+restatements of it. **Rule learned: goal 3 ("load-bearing steps stay visible") is relative to the
+available vocabulary. Extracting a lemma can demote a step that was previously worth naming — so
+re-read earlier golfed proofs after adding a helper.**

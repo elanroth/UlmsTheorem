@@ -107,6 +107,25 @@ lemma ulmHeight_eq_of_mem_not_mem_succ [Fact p.Prime] (x : G) (α : Ordinal.{0})
   · exact ulmHeight_le_of_not_mem_succ p x α hxs
   · exact coe_le_ulmHeight_of_mem p x α hx
 
+/-- For an element of exact height `α`, properness over `S` says exactly that no
+`S`-translate reaches `G_(α+1)`.
+
+Both Kaplansky target constructions establish properness by ruling out a higher
+translate and consume it the same way, so this is the form they share. -/
+lemma isProper_iff_forall_not_mem_succ [Fact p.Prime] (S : AddSubgroup G) {x : G}
+    {α : Ordinal.{0}} (hx : x ∈ ulmSubgroup p α (G := G))
+    (hxs : x ∉ ulmSubgroup p (Order.succ α) (G := G)) :
+    IsProper p S x ↔ ∀ c : S, x + (c : G) ∉ ulmSubgroup p (Order.succ α) (G := G) := by
+  have hheight := ulmHeight_eq_of_mem_not_mem_succ p x α hx hxs
+  constructor
+  · exact fun hproper c hc ↦ absurd
+      (((coe_le_ulmHeight_of_mem p _ _ hc).trans (hproper c)).trans_eq hheight)
+      (not_le_of_gt (WithTop.coe_lt_coe.mpr (Order.lt_succ α)))
+  · intro h c
+    show ulmHeight p (x + (c : G)) ≤ ulmHeight p x
+    rw [hheight]
+    exact ulmHeight_le_of_not_mem_succ p (x + (c : G)) α (h c)
+
 /-- In a reduced `p`-group, every nonzero element has an attained ordinal
 Ulm height.
 
