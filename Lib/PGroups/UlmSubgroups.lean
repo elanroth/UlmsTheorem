@@ -135,4 +135,17 @@ lemma map_ulmSubgroup_le {H : Type*} [AddCommGroup H] (φ : G →+ H) (α : Ordi
       intro β hβ
       exact IH β hβ ⟨x, hx β hβ, rfl⟩
 
+/-- Translating by a multiple of an element already in `G_β` does not change
+membership in `G_β`. -/
+lemma add_zsmul_mem_iff_of_mem {β : Ordinal.{0}} {x c : G}
+    (hx : x ∈ ulmSubgroup p β (G := G)) (n : ℤ) :
+    c + n • x ∈ ulmSubgroup p β (G := G) ↔ c ∈ ulmSubgroup p β (G := G) := by
+  constructor
+  · intro h
+    simpa using (ulmSubgroup p β (G := G)).sub_mem h
+      ((ulmSubgroup p β (G := G)).zsmul_mem hx n)
+  · intro h
+    exact (ulmSubgroup p β (G := G)).add_mem h
+      ((ulmSubgroup p β (G := G)).zsmul_mem hx n)
+
 end UlmSubgroupLemmas

@@ -184,3 +184,71 @@ goal-3 grounds. Once the helper existed they stopped being load-bearing steps an
 restatements of it. **Rule learned: goal 3 ("load-bearing steps stay visible") is relative to the
 available vocabulary. Extracting a lemma can demote a step that was previously worth naming — so
 re-read earlier golfed proofs after adding a helper.**
+
+---
+
+## Pass 4 — 2026-08-28 — the three next-longest declarations, in one pass
+
+**Scope.** `socle_extend_build_map`, `proper_adjoin_rep_mem_iff`, `kaplansky_extend_one_of_target`
+together. Run as one pass to test whether the rules now apply without per-declaration deliberation.
+
+| Metric | Before | After |
+|---|---|---|
+| `socle_extend_build_map` proof lines | 93 | 44 |
+| `proper_adjoin_rep_mem_iff` proof lines | 68 | 30 |
+| `kaplansky_extend_one_of_target` proof lines | 60 | 30 |
+| `Lib/Ulm/Extension.lean` | 1577 | 1460 |
+| Declarations in `Extension.lean` | 53 | 53 (none added, none removed) |
+| Statements | — | **all 53 byte-identical**, checked by extraction |
+| `Lib.Ulm.Extension` build | 11s | 10s |
+| Linter warnings | 2 | 2 |
+| `lake build` | green, 8305 jobs | green, 8305 jobs |
+
+**The find: a lemma re-proved 60 lines above its own statement.** `socle_extend_build_map` proved
+`(p : ℤ) ∣ z.2` inline with a 24-line Bézout argument (`Nat.Coprime`, `Int.gcd_eq_gcd_ab`, an
+explicit `calc` for `g = gcdA • (n • g) + gcdB • (p • g)`). `dvd_of_zsmul_mem_of_not_mem`, four
+declarations further down **in the same file**, is exactly that statement, proved in eight lines via
+`addOrderOf` in the quotient. Moving the existing lemma above its duplicate and calling it: **24
+lines → 2.**
+
+This is worse than the Pass 3 case and more instructive. In Pass 3 the shared lemma did not exist
+and had to be invented. Here it existed, was already correct, already used by a neighbouring
+declaration, and was *still* re-derived by hand — because the two were written in different sessions
+and nothing links them. **A duplicate-detection sweep is worth running over any AI-written Lean
+file before golfing it**: grep the statements, not the proofs.
+
+**Second helper extracted**, into `Lib/PGroups/UlmSubgroups.lean` beside the filtration it is about:
+
+```lean
+lemma add_zsmul_mem_iff_of_mem {β : Ordinal.{0}} {x c : G}
+    (hx : x ∈ ulmSubgroup p β (G := G)) (n : ℤ) :
+    c + n • x ∈ ulmSubgroup p β (G := G) ↔ c ∈ ulmSubgroup p β (G := G)
+```
+
+`proper_adjoin_rep_mem_iff` contained this argument twice — once for `G` and once verbatim for `H`,
+24 lines total — because the lemma is a source/target comparison and the prover wrote each side out.
+**Symmetric duplication across the two groups is a shape to look for in this repo specifically.**
+
+**Other findings.**
+
+- **`hraw_inj` in `kaplansky_extend_one_of_target` was dead** — five lines defining an injectivity
+  fact nothing referenced (`grep -c` returns 1, its own definition). Deleted.
+- **Eight `change` blocks in `kaplansky_extend_one_of_target`**, including `change b ∈ B'` followed
+  immediately by `change b ∈ AddMonoidHom.range raw` — a `let` unfolded in two steps. The Pass 2
+  rule fired unmodified: most disappeared by inlining the `let`s into the structure literal that
+  consumed them, and the final `∀ a, …` obligation closed as `fun a ↦ hfA a` with no `change` at all.
+- **`push_cast` must come *before* the rewrite it enables, not after.** Pass 2 established
+  `push_cast` over `change` at a coercion boundary; this pass got the ordering wrong first
+  (`rw [map_add, map_zsmul, ← hpw]; push_cast`) and the `← hpw` failed to match. Correct order is
+  `rw [map_add, map_zsmul]; push_cast; rw [← hpw]`. **This was the pass's only build failure.**
+
+**Did the rules apply without fresh deliberation?** Largely yes. Three declarations, ~180 proof
+lines removed, and exactly one compile error across the whole pass — the `push_cast` ordering, which
+was a refinement of an existing rule rather than a new problem. The two things that still needed a
+person were both *recognition* problems, not rewriting problems: seeing that an existing lemma was
+being re-proved, and seeing that two 12-line blocks were the same argument on `G` and on `H`.
+
+**Logged, not done: `fun x => ` vs `fun x ↦`.** The repo is 44 `=>` to 12 `↦`; mathlib style (and
+§4) is `↦`. New code in this pass uses `↦`, so the file is now mixed. This is a safe mechanical
+sweep but it would swamp a golf diff, so it is left as its own one-line change for Elan to approve
+rather than smuggled in here.

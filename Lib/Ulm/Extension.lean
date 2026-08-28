@@ -777,109 +777,6 @@ lemma mem_adjoinElem_iff {A : AddSubgroup G} {g x : G} :
   · rintro ⟨a, ha, n, rfl⟩
     exact AddSubgroup.add_mem_sup ha <| AddSubgroup.mem_zmultiples_iff.mpr ⟨n, rfl⟩
 
-lemma socle_extend_build_map
-    {A : AddSubgroup G} {B : AddSubgroup H}
-    (φ : A →+ B)
-    {g : G} (hg_notin : g ∉ A) {h : H}
-    (hpg_in : p • g ∈ A)
-    (hrel : p • h = (φ ⟨p • g, hpg_in⟩ : H)) :
-    ∃ φ' : adjoinElem A g →+ (⊤ : AddSubgroup H),
-      (∀ a : A, (φ' ⟨a, le_adjoinElem (A := A) (g := g) a.prop⟩ : H) = φ a) ∧
-      (φ' ⟨g, mem_adjoinElem_right (A := A) g⟩ : H) = h := by
-  let ψ : A × ℤ →+ adjoinElem A g :=
-    { toFun := fun z =>
-        ⟨(z.1 : G) + z.2 • g, (mem_adjoinElem_iff (A := A) (g := g)).2 ⟨z.1, z.1.prop, z.2, rfl⟩⟩
-      map_zero' := by
-        ext
-        simp
-      map_add' := by
-        intro x y
-        ext
-        simp [add_assoc, add_left_comm, add_zsmul] }
-  have hψ_surj : Function.Surjective ψ := by
-    intro x
-    rcases (mem_adjoinElem_iff (A := A) (g := g) (x := (x : G))).1 x.prop with ⟨a, ha, n, hn⟩
-    refine ⟨(⟨a, ha⟩, n), ?_⟩
-    ext
-    exact hn
-  let χ : A × ℤ →+ H :=
-    { toFun := fun z => (φ z.1 : H) + z.2 • h
-      map_zero' := by simp
-      map_add' := by
-        intro x y
-        simp [add_assoc, add_left_comm, add_comm, add_zsmul] }
-  have hker : ψ.ker ≤ χ.ker := by
-    intro z hz
-    rw [AddMonoidHom.mem_ker] at hz ⊢
-    have hz0 : ((z.1 : G) + z.2 • g : G) = 0 := by
-      exact congrArg (fun t : adjoinElem A g => (t : G)) hz
-    have hzA : z.2 • g ∈ A := by
-      have hzA' : z.2 • g = -((z.1 : A) : G) := by
-        rw [eq_neg_iff_add_eq_zero]
-        simpa [add_comm] using hz0
-      rw [hzA']
-      exact A.neg_mem z.1.prop
-    have hp_dvd : (p : ℤ) ∣ z.2 := by
-      by_contra hp_dvd
-      have hcop_nat : Nat.Coprime p z.2.natAbs := by
-        refine (Nat.Prime.coprime_iff_not_dvd Fact.out).2 ?_
-        intro hdiv
-        exact hp_dvd (Int.natCast_dvd.2 hdiv)
-      have hcop : z.2.gcd ↑p = 1 := by
-        rw [Int.gcd_eq_natAbs]
-        simpa [Nat.gcd_comm] using hcop_nat.gcd_eq_one
-      have hbez : (1 : ℤ) = z.2 * z.2.gcdA ↑p + ↑p * z.2.gcdB ↑p := by
-        simpa [hcop] using (Int.gcd_eq_gcd_ab z.2 p)
-      have hg_mem : g ∈ A := by
-        have hbez' : (1 : ℤ) = z.2.gcdA ↑p * z.2 + z.2.gcdB ↑p * p := by
-          simpa [Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hbez
-        have hg_expr : g =
-            z.2.gcdA ↑p • (z.2 • g) + z.2.gcdB ↑p • ((p : ℤ) • g) := by
-          calc
-            g = (1 : ℤ) • g := by simp
-            _ = (z.2.gcdA ↑p * z.2 + z.2.gcdB ↑p * p) • g := by rw [hbez']
-            _ = z.2.gcdA ↑p • (z.2 • g) + z.2.gcdB ↑p • ((p : ℤ) • g) := by
-              simp [add_zsmul, mul_zsmul]
-        rw [hg_expr]
-        exact A.add_mem (A.zsmul_mem hzA _) (A.zsmul_mem (by simpa using hpg_in) _)
-      exact hg_notin hg_mem
-    rcases hp_dvd with ⟨k, hk⟩
-    have hzA0 : z.1 + k • ⟨p • g, hpg_in⟩ = 0 := by
-      apply Subtype.ext
-      simpa [hk, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hz0
-    calc
-      χ z = (φ z.1 : H) + ((p : ℤ) * k) • h := by
-        simp [χ, hk]
-      _ = (φ z.1 : H) + k • (p • h) := by
-        simp [mul_zsmul, Int.mul_comm]
-      _ = (φ z.1 : H) + k • (φ ⟨p • g, hpg_in⟩ : H) := by rw [hrel]
-      _ = (φ (z.1 + k • ⟨p • g, hpg_in⟩) : H) := by
-        simp [map_add, map_zsmul]
-      _ = 0 := by simp [hzA0]
-  let φ0 : adjoinElem A g →+ H :=
-    ψ.liftOfSurjective hψ_surj ⟨χ, hker⟩
-  refine ⟨φ0.codRestrict ⊤ (by intro x; simp), ?_, ?_⟩
-  · intro a
-    have hψa : ψ (a, 0) = ⟨(a : G), le_adjoinElem (A := A) (g := g) a.prop⟩ := by
-      ext
-      simp [ψ]
-    change φ0 ⟨(a : G), le_adjoinElem (A := A) (g := g) a.prop⟩ = φ a
-    rw [← hψa]
-    have hcomp :
-        φ0 (ψ (a, 0)) = χ (a, 0) := by
-      simp [φ0]
-    simpa [χ] using hcomp
-  ·
-    have hψg : ψ (0, 1) = ⟨g, mem_adjoinElem_right (A := A) g⟩ := by
-      ext
-      simp [ψ]
-    change φ0 ⟨g, mem_adjoinElem_right (A := A) g⟩ = h
-    rw [← hψg]
-    have hcomp :
-        φ0 (ψ (0, 1)) = χ (0, 1) := by
-      simp [φ0]
-    simpa [χ] using hcomp
-
 lemma dvd_of_zsmul_mem_of_not_mem
     {A : AddSubgroup G} {g : G}
     (hg_notin : g ∉ A) (hpg_in : p • g ∈ A)
@@ -912,6 +809,60 @@ lemma dvd_of_zsmul_mem_of_not_mem
       simpa using hzero
     · exact horder_eq
   exact horder_eq ▸ addOrderOf_dvd_iff_zsmul_eq_zero.mpr hkq
+
+lemma socle_extend_build_map
+    {A : AddSubgroup G} {B : AddSubgroup H}
+    (φ : A →+ B)
+    {g : G} (hg_notin : g ∉ A) {h : H}
+    (hpg_in : p • g ∈ A)
+    (hrel : p • h = (φ ⟨p • g, hpg_in⟩ : H)) :
+    ∃ φ' : adjoinElem A g →+ (⊤ : AddSubgroup H),
+      (∀ a : A, (φ' ⟨a, le_adjoinElem (A := A) (g := g) a.prop⟩ : H) = φ a) ∧
+      (φ' ⟨g, mem_adjoinElem_right (A := A) g⟩ : H) = h := by
+  let ψ : A × ℤ →+ adjoinElem A g :=
+    { toFun := fun z ↦
+        ⟨(z.1 : G) + z.2 • g, (mem_adjoinElem_iff (A := A) (g := g)).2 ⟨z.1, z.1.prop, z.2, rfl⟩⟩
+      map_zero' := by ext; simp
+      map_add' := fun x y ↦ by ext; simp [add_assoc, add_left_comm, add_zsmul] }
+  have hψ_surj : Function.Surjective ψ := fun x ↦ by
+    rcases (mem_adjoinElem_iff (A := A) (g := g) (x := (x : G))).1 x.prop with ⟨a, ha, n, hn⟩
+    exact ⟨(⟨a, ha⟩, n), by ext; exact hn⟩
+  let χ : A × ℤ →+ H :=
+    { toFun := fun z ↦ (φ z.1 : H) + z.2 • h
+      map_zero' := by simp
+      map_add' := fun x y ↦ by simp [add_assoc, add_left_comm, add_comm, add_zsmul] }
+  -- `χ` carries `ψ`'s kernel: a relation forces `p ∣ z.2`, and then `hrel` turns
+  -- the `h`-component into the `φ`-image of the `A`-component.
+  have hker : ψ.ker ≤ χ.ker := by
+    intro z hz
+    rw [AddMonoidHom.mem_ker] at hz ⊢
+    have hz0 : ((z.1 : G) + z.2 • g : G) = 0 :=
+      congrArg (fun t : adjoinElem A g ↦ (t : G)) hz
+    have hzA : z.2 • g ∈ A := by
+      rw [show z.2 • g = -((z.1 : A) : G) by
+        rw [eq_neg_iff_add_eq_zero]; simpa [add_comm] using hz0]
+      exact A.neg_mem z.1.prop
+    obtain ⟨k, hk⟩ := dvd_of_zsmul_mem_of_not_mem p hg_notin hpg_in z.2 hzA
+    have hzA0 : z.1 + k • ⟨p • g, hpg_in⟩ = 0 :=
+      Subtype.ext (by
+        simpa [hk, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hz0)
+    calc
+      χ z = (φ z.1 : H) + ((p : ℤ) * k) • h := by simp [χ, hk]
+      _ = (φ z.1 : H) + k • (p • h) := by simp [mul_zsmul, Int.mul_comm]
+      _ = (φ z.1 : H) + k • (φ ⟨p • g, hpg_in⟩ : H) := by rw [hrel]
+      _ = (φ (z.1 + k • ⟨p • g, hpg_in⟩) : H) := by simp [map_add, map_zsmul]
+      _ = 0 := by simp [hzA0]
+  let φ0 : adjoinElem A g →+ H := ψ.liftOfSurjective hψ_surj ⟨χ, hker⟩
+  have hφ0ψ : ∀ z : A × ℤ, φ0 (ψ z) = χ z := fun z ↦ by simp [φ0]
+  refine ⟨φ0.codRestrict ⊤ fun x ↦ by simp, fun a ↦ ?_, ?_⟩
+  · have hψa : ψ (a, 0) = ⟨(a : G), le_adjoinElem (A := A) (g := g) a.prop⟩ := by ext; simp [ψ]
+    show φ0 ⟨(a : G), le_adjoinElem (A := A) (g := g) a.prop⟩ = φ a
+    rw [← hψa]
+    simpa [χ] using hφ0ψ (a, 0)
+  · have hψg : ψ (0, 1) = ⟨g, mem_adjoinElem_right (A := A) g⟩ := by ext; simp [ψ]
+    show φ0 ⟨g, mem_adjoinElem_right (A := A) g⟩ = h
+    rw [← hψg]
+    simpa [χ] using hφ0ψ (0, 1)
 
 lemma phi_zsmul_eq_zsmul_h
     {A : AddSubgroup G} {B : AddSubgroup H}
@@ -1054,73 +1005,35 @@ lemma proper_adjoin_rep_mem_iff
     ((a : G) + n • x ∈ ulmSubgroup p β (G := G)) ↔
       ((φ a : H) + n • w ∈ ulmSubgroup p β (G := H)) := by
   by_cases hn : (p : ℤ) ∣ n
-  · obtain ⟨k, rfl⟩ := hn
+  · -- On multiples of `p` the representative rewrites inside `A`, where `φ`
+    -- preserves height by hypothesis.
+    obtain ⟨k, rfl⟩ := hn
     let a' : A := a + k • ⟨p • x, hpxA⟩
-    have hxrepr :
-        (a : G) + ((p : ℤ) * k) • x = (a' : G) := by
-      change (a : G) + ((p : ℤ) * k) • x =
-        (a : G) + k • (p • x)
+    have hxrepr : (a : G) + ((p : ℤ) * k) • x = (a' : G) := by
+      show (a : G) + ((p : ℤ) * k) • x = (a : G) + k • (p • x)
       simp [mul_zsmul, Int.mul_comm]
-    have hwrepr :
-        (φ a : H) + ((p : ℤ) * k) • w = (φ a' : H) := by
-      change (φ a : H) + ((p : ℤ) * k) • w =
-        (φ (a + k • ⟨p • x, hpxA⟩) : H)
+    have hwrepr : (φ a : H) + ((p : ℤ) * k) • w = (φ a' : H) := by
+      show (φ a : H) + ((p : ℤ) * k) • w = (φ (a + k • ⟨p • x, hpxA⟩) : H)
       rw [map_add, map_zsmul]
-      change (φ a : H) + ((p : ℤ) * k) • w =
-        (φ a : H) + k • (φ ⟨p • x, hpxA⟩ : H)
+      push_cast
       rw [← hpw]
       simp [mul_zsmul, Int.mul_comm]
     rw [hxrepr, hwrepr]
     exact hφ a' β
   · by_cases hβα : β ≤ α
-    · have hxβ : x ∈ ulmSubgroup p β (G := G) :=
-        ulmSubgroup_antitone p hβα hxα
-      have hwβ : w ∈ ulmSubgroup p β (G := H) :=
-        ulmSubgroup_antitone p hβα hwα
-      have hsource :
-          ((a : G) + n • x ∈ ulmSubgroup p β (G := G)) ↔
-            (a : G) ∈ ulmSubgroup p β (G := G) := by
-        constructor
-        · intro hsum
-          have hsub :=
-            (ulmSubgroup p β (G := G)).sub_mem hsum
-              ((ulmSubgroup p β (G := G)).zsmul_mem hxβ n)
-          simpa using hsub
-        · intro ha
-          exact (ulmSubgroup p β (G := G)).add_mem ha
-            ((ulmSubgroup p β (G := G)).zsmul_mem hxβ n)
-      have htarget :
-          ((φ a : H) + n • w ∈ ulmSubgroup p β (G := H)) ↔
-            (φ a : H) ∈ ulmSubgroup p β (G := H) := by
-        constructor
-        · intro hsum
-          have hsub :=
-            (ulmSubgroup p β (G := H)).sub_mem hsum
-              ((ulmSubgroup p β (G := H)).zsmul_mem hwβ n)
-          simpa using hsub
-        · intro ha
-          exact (ulmSubgroup p β (G := H)).add_mem ha
-            ((ulmSubgroup p β (G := H)).zsmul_mem hwβ n)
-      exact hsource.trans ((hφ a β).trans htarget.symm)
-    · have hsuccβ : Order.succ α ≤ β :=
-        Order.succ_le_iff.mpr (lt_of_not_ge hβα)
-      have hsource :
-          (a : G) + n • x ∉ ulmSubgroup p β (G := G) := by
-        intro hmem
-        exact
-          (not_mem_succ_add_zsmul_of_proper p hxα hxSucc hxProper hpxA a n hn)
-            (ulmSubgroup_antitone p hsuccβ hmem)
-      have htarget :
-          (φ a : H) + n • w ∉ ulmSubgroup p β (G := H) := by
-        intro hmem
-        exact
-          (not_mem_succ_add_zsmul_of_proper p hwα hwSucc hwProper
-            (by
-              rw [hpw]
-              exact (φ ⟨p • x, hpxA⟩).prop)
-            (φ a) n hn)
-            (ulmSubgroup_antitone p hsuccβ hmem)
-      exact iff_of_false hsource htarget
+    · -- Below the exact height both `x` and `w` are already in the filtration,
+      -- so the multiple is invisible on each side.
+      rw [add_zsmul_mem_iff_of_mem p (ulmSubgroup_antitone p hβα hxα) n,
+        add_zsmul_mem_iff_of_mem p (ulmSubgroup_antitone p hβα hwα) n]
+      exact hφ a β
+    · -- Above it, properness forbids either side from reaching `G_β`.
+      have hsuccβ : Order.succ α ≤ β := Order.succ_le_iff.mpr (lt_of_not_ge hβα)
+      exact iff_of_false
+        (fun hmem ↦ not_mem_succ_add_zsmul_of_proper p hxα hxSucc hxProper hpxA a n hn
+          (ulmSubgroup_antitone p hsuccβ hmem))
+        (fun hmem ↦ not_mem_succ_add_zsmul_of_proper p hwα hwSucc hwProper
+            (by rw [hpw]; exact (φ ⟨p • x, hpxA⟩).prop) (φ a) n hn
+          (ulmSubgroup_antitone p hsuccβ hmem))
 
 /-- The quotient-built homomorphism on `A + ⟨x⟩` is height-preserving once
 the chosen image `w` satisfies Kaplansky's exact-height and properness
@@ -1199,59 +1112,29 @@ lemma kaplansky_extend_one_of_target
   let A' : AddSubgroup G := adjoinElem s.A x
   let raw : A' →+ H := (⊤ : AddSubgroup H).subtype.comp f
   let B' : AddSubgroup H := AddMonoidHom.range raw
-  have hf_inj : Function.Injective f :=
-    IsHeightPresOn.injective (p := p) hG hfheight
-  have hraw_inj : Function.Injective raw := by
-    intro a b hab
-    apply hf_inj
-    apply Subtype.ext
-    exact hab
-  have hrange_inj : Function.Injective raw.rangeRestrict := by
-    intro a b hab
-    apply hf_inj
-    apply Subtype.ext
-    simpa [raw] using congrArg Subtype.val hab
-  let e : A' ≃+ B' :=
-    AddEquiv.ofBijective raw.rangeRestrict
-      ⟨hrange_inj, AddMonoidHom.rangeRestrict_surjective raw⟩
-  have hA'finite : Set.Finite (A' : Set G) := by
-    exact adjoinElem_finite (p := p) hG.primary s.hAfinite x
+  have hf_inj : Function.Injective f := IsHeightPresOn.injective (p := p) hG hfheight
+  have hrange_inj : Function.Injective raw.rangeRestrict := fun a b hab ↦
+    hf_inj (Subtype.ext (by simpa [raw] using congrArg Subtype.val hab))
+  have hA'finite : Set.Finite (A' : Set G) := adjoinElem_finite (p := p) hG.primary s.hAfinite x
   letI : Finite A' := hA'finite.to_subtype
-  have hB'finite : Set.Finite (B' : Set H) := by
-    change Set.Finite (Set.range raw)
-    exact Set.finite_range raw
-  have heheight : IsHeightPresOn p e.toAddMonoidHom := by
-    intro a β
-    simpa [e, raw] using hfheight a β
   let s' : UlmStage p (G := G) (H := H) :=
     { A := A'
       B := B'
       hAfinite := hA'finite
-      hBfinite := hB'finite
-      e := e
-      hφ := heheight }
-  have hAA : s.A ≤ s'.A := by
-    exact le_adjoinElem s.A x
-  have hBB : s.B ≤ s'.B := by
-    intro b hb
+      hBfinite := Set.finite_range raw
+      e := AddEquiv.ofBijective raw.rangeRestrict
+        ⟨hrange_inj, AddMonoidHom.rangeRestrict_surjective raw⟩
+      hφ := fun a β ↦ by simpa [raw] using hfheight a β }
+  have hAA : s.A ≤ s'.A := le_adjoinElem s.A x
+  -- Every old target element is the image of its own preimage, which the
+  -- extension still sends where `s.e` did.
+  have hBB : s.B ≤ s'.B := fun b hb ↦ by
     let a : s.A := s.e.symm ⟨b, hb⟩
-    change b ∈ B'
-    change b ∈ AddMonoidHom.range raw
     refine ⟨⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩, ?_⟩
-    change raw ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ = b
-    change (f ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) = b
+    show (f ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) = b
     rw [hfA a]
     simp [a]
-  refine ⟨s', hAA, hBB, ?_, ?_⟩
-  · exact mem_adjoinElem_right s.A x
-  · intro a
-    change
-      (e ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) =
-        s.e a
-    change
-      (f ⟨(a : G), le_adjoinElem (A := s.A) (g := x) a.prop⟩ : H) =
-        s.e a
-    exact hfA a
+  exact ⟨s', hAA, hBB, mem_adjoinElem_right s.A x, fun a ↦ hfA a⟩
 
 omit hp in
 /-- A finite coset has a representative satisfying both of Kaplansky's
