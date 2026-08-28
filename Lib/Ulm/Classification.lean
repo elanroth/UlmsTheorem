@@ -41,11 +41,11 @@ private def BFIsoStep.init : BFIsoStep p (G := G) (H := H) where
     rw [show ((⊥ : AddSubgroup H) : Set H) = {0} by ext; simp]
     exact Set.finite_singleton 0
   e    := {
-    toFun    := fun a => ⟨0, AddSubgroup.zero_mem _⟩
-    invFun   := fun b => ⟨0, AddSubgroup.zero_mem _⟩
-    left_inv := fun a => Subtype.ext (by simp [AddSubgroup.mem_bot.mp a.prop])
-    right_inv:= fun b => Subtype.ext (by simp [AddSubgroup.mem_bot.mp b.prop])
-    map_add' := fun a b => by
+    toFun    := fun a ↦ ⟨0, AddSubgroup.zero_mem _⟩
+    invFun   := fun b ↦ ⟨0, AddSubgroup.zero_mem _⟩
+    left_inv := fun a ↦ Subtype.ext (by simp [AddSubgroup.mem_bot.mp a.prop])
+    right_inv:= fun b ↦ Subtype.ext (by simp [AddSubgroup.mem_bot.mp b.prop])
+    map_add' := fun a b ↦ by
       simp }
   hφ   := by
     intro a α
@@ -68,7 +68,7 @@ private lemma bf_forth_back
   obtain ⟨s₁, h₁, h₂, hg₁, h₃⟩ := hforth s g
   obtain ⟨s₂, h₄, h₅, hh₂, h₆⟩ := hback s₁ h
   exact ⟨s₂, h₁.trans h₄, h₂.trans h₅, h₄ hg₁, hh₂,
-         fun a => by simpa [h₃ a] using h₆ ⟨a, h₁ a.2⟩⟩
+         fun a ↦ by simpa [h₃ a] using h₆ ⟨a, h₁ a.2⟩⟩
 
 /-- The ℕ-indexed chain of `BFIsoStep`s, covering one element of G and H at each stage. -/
 private noncomputable def bf_chain
@@ -292,7 +292,7 @@ lemma iso_of_ulmInvariant_eq_of_backAndForth
     ⟨bf_limit_map_injective p hforth hback enumG hG_surj enumH,
      bf_limit_map_surjective p hforth hback enumG hG_surj enumH hH_surj⟩
   exact ⟨{ Equiv.ofBijective _ h_bij with
-             map_add' := fun x y => by
+             map_add' := fun x y ↦ by
                simpa using bf_limit_map_add p hforth hback enumG hG_surj enumH x y }⟩
 
 /-- The back extension obtained by applying Kaplansky's extension lemma to the
@@ -307,7 +307,7 @@ private lemma kaplansky_extend_back
       h ∈ s'.B ∧
       ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
   obtain ⟨t, hBB, hAA, hh, hcomp⟩ :=
-    kaplansky_extend (p := p) hH (fun β => (hinv β).symm) s.symm h
+    kaplansky_extend (p := p) hH (fun β ↦ (hinv β).symm) s.symm h
   refine ⟨t.symm, hAA, hBB, hh, ?_⟩
   intro a
   have ht :
@@ -333,5 +333,5 @@ lemma iso_of_ulmInvariant_eq
       ulmInvariant p α (G := G) = ulmInvariant p α (G := H)) :
     Nonempty (G ≃+ H) := by
   apply iso_of_ulmInvariant_eq_of_backAndForth (p := p)
-  · exact fun s g => kaplansky_extend (p := p) hG hinv s g
-  · exact fun s h => kaplansky_extend_back (p := p) hH hinv s h
+  · exact fun s g ↦ kaplansky_extend (p := p) hG hinv s g
+  · exact fun s h ↦ kaplansky_extend_back (p := p) hH hinv s h

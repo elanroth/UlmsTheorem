@@ -359,4 +359,4 @@ end ulmLength
 `ω·γ`, `ω·γ+1`, ..., `ω·γ+(n-1)`. -/
 noncomputable def tailInvariants {G : Type*} [AddCommGroup G]
     (γ : Ordinal) (n : ℕ) : Fin n → Cardinal :=
-  fun k => ulmInvariant p (ω * γ + k.1) (G := G)
+  fun k ↦ ulmInvariant p (ω * γ + k.1) (G := G)

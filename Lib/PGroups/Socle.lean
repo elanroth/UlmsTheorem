@@ -41,7 +41,7 @@ noncomputable def pSocleAt (α : Ordinal) : AddSubgroup G :=
 lemma pSocleAt_zero : pSocleAt p (0 : Ordinal) (G := G) = pSocle p := by
   simp [pSocleAt, ulmSubgroup_zero]
 
-lemma pSocleAt_antitone : Antitone (fun α => pSocleAt p α (G := G)) := fun _ _ h =>
+lemma pSocleAt_antitone : Antitone (fun α ↦ pSocleAt p α (G := G)) := fun _ _ h ↦
   inf_le_inf_left _ (ulmSubgroup_antitone p h)
 
 lemma pSocleAt_succ_le (α : Ordinal) :

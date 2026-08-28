@@ -18,8 +18,8 @@ noncomputable def ulmSubgroup {G : Type*} [AddCommGroup G] (α : Ordinal) :
     AddSubgroup G :=
   α.limitRecOn
     ⊤
-    (fun _β Hβ => pImage p Hβ)
-    (fun o _ho IH => ⨅ (β : Ordinal) (_ : β < o), IH β ‹_›)
+    (fun _β Hβ ↦ pImage p Hβ)
+    (fun o _ho IH ↦ ⨅ (β : Ordinal) (_ : β < o), IH β ‹_›)
 
 section UlmSubgroupLemmas
 
@@ -40,8 +40,8 @@ lemma ulmSubgroup_limit (o : Ordinal) (ho : Order.IsSuccLimit o) :
   simpa using
     (Ordinal.limitRecOn_limit o
       (⊤ : AddSubgroup G)
-      (fun _β Hβ => pImage p Hβ)
-      (fun o _ho IH => ⨅ (β : Ordinal) (_ : β < o), IH β ‹_›)
+      (fun _β Hβ ↦ pImage p Hβ)
+      (fun o _ho IH ↦ ⨅ (β : Ordinal) (_ : β < o), IH β ‹_›)
       ho)
 
 @[simp] lemma mem_ulmSubgroup_succ_iff (α : Ordinal) (x : G) :
@@ -54,8 +54,8 @@ lemma mem_ulmSubgroup_limit_iff {o : Ordinal} (ho : Order.IsSuccLimit o) (x : G)
   rw [ulmSubgroup_limit (p := p) (G := G) o ho]
   simp only [AddSubgroup.mem_iInf]
 
-lemma ulmSubgroup_antitone : Antitone (fun α => ulmSubgroup p α (G := G)) := by
-  let P : Ordinal → Prop := fun β => ∀ α, α ≤ β → ulmSubgroup p β (G := G) ≤ ulmSubgroup p α
+lemma ulmSubgroup_antitone : Antitone (fun α ↦ ulmSubgroup p α (G := G)) := by
+  let P : Ordinal → Prop := fun β ↦ ∀ α, α ≤ β → ulmSubgroup p β (G := G) ≤ ulmSubgroup p α
   have hP : ∀ β, P β := by
     intro β
     induction β using Ordinal.limitRecOn with

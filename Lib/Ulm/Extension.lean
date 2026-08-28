@@ -754,7 +754,7 @@ lemma adjoinElem_finite
   letI : Finite (adjoinElem A g) :=
     AddCommGroup.finite_of_fg_torsion (adjoinElem A g) htors
   have hrange :
-      Set.range (fun z : adjoinElem A g => (z : G)) =
+      Set.range (fun z : adjoinElem A g ↦ (z : G)) =
         (adjoinElem A g : Set G) := by
     ext z
     simp
@@ -917,7 +917,7 @@ lemma extend_well_defined
   have hmap_sub :
       (φ ⟨a₁ - a₂, A.sub_mem ha₁ ha₂⟩ : H) =
         (φ ⟨a₁, ha₁⟩ : H) - (φ ⟨a₂, ha₂⟩ : H) := by
-    exact congrArg (fun z : B => (z : H)) (φ.map_sub ⟨a₁, ha₁⟩ ⟨a₂, ha₂⟩)
+    exact congrArg (fun z : B ↦ (z : H)) (φ.map_sub ⟨a₁, ha₁⟩ ⟨a₂, ha₂⟩)
   have hdiff :
       (φ ⟨a₁, ha₁⟩ : H) - (φ ⟨a₂, ha₂⟩ : H) = (n₂ - n₁) • h := by
     exact hmap_sub.symm.trans hsub
@@ -1149,7 +1149,7 @@ lemma exists_kaplanskyNormalized
         ulmHeight p (p • y) ≤ ulmHeight p (p • x) := by
   have hAne : (A : Set G).Nonempty := ⟨0, A.zero_mem⟩
   obtain ⟨a₀, ha₀A, ha₀max⟩ :=
-    Set.exists_max_image (A : Set G) (fun a => ulmHeight p (g + a))
+    Set.exists_max_image (A : Set G) (fun a ↦ ulmHeight p (g + a))
       hAfinite hAne
   have ha₀proper : IsProper p A (g + a₀) := by
     intro a
@@ -1162,7 +1162,7 @@ lemma exists_kaplanskyNormalized
       exact ha.1)
   have hCne : C.Nonempty := ⟨a₀, ha₀A, ha₀proper⟩
   obtain ⟨a, haC, hamax⟩ :=
-    Set.exists_max_image C (fun a => ulmHeight p (p • (g + a)))
+    Set.exists_max_image C (fun a ↦ ulmHeight p (p • (g + a)))
       hCfinite hCne
   refine ⟨g + a, by simpa using haC.1, haC.2, ?_⟩
   intro y hyA hyProper
@@ -1368,7 +1368,7 @@ lemma kaplansky_extend_one
       g ∈ s'.A ∧
       ∀ a : s.A, (s'.e ⟨a, hAA a.prop⟩ : H) = s.e a := by
   by_cases hgA : g ∈ s.A
-  · exact ⟨s, le_rfl, le_rfl, hgA, fun _ => rfl⟩
+  · exact ⟨s, le_rfl, le_rfl, hgA, fun _ ↦ rfl⟩
   obtain ⟨x, hxgA, hxProper, hpxMax'⟩ :=
     exists_kaplanskyNormalized (p := p) s.hAfinite g
   have hxA : x ∉ s.A := by
@@ -1438,7 +1438,7 @@ lemma kaplansky_extend
     | zero =>
         intro t hpow
         have hgA : g ∈ t.A := by simpa using hpow
-        exact ⟨t, le_rfl, le_rfl, hgA, fun _ => rfl⟩
+        exact ⟨t, le_rfl, le_rfl, hgA, fun _ ↦ rfl⟩
     | succ n ih =>
         intro t hpow
         let y : G := p ^ n • g

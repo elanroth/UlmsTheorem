@@ -143,7 +143,7 @@ lemma exists_ulmHeight_eq_of_ne_zero [Fact p.Prime]
     simpa using hx0
   obtain ⟨δ, hδmin⟩ :=
     exists_minimal_of_wellFoundedLT
-      (fun β : Ordinal.{0} => x ∉ ulmSubgroup p β (G := G)) ⟨γ, hxγ⟩
+      (fun β : Ordinal.{0} ↦ x ∉ ulmSubgroup p β (G := G)) ⟨γ, hxγ⟩
   rcases Ordinal.zero_or_succ_or_isSuccLimit δ with hδ0 | ⟨α, rfl⟩ | hδlim
   · subst δ
     exact False.elim (hδmin.1 (by simp))
@@ -362,7 +362,7 @@ lemma mem_ulmSubgroup_zsmul_iff [Fact p.Prime] (hprim : IsPrimaryPGroup p G)
           show n.natAbs.gcd p = 1
           rw [Nat.gcd_comm]
           exact (Nat.Prime.coprime_iff_not_dvd Fact.out).2
-            (fun h => hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 h)))
+            (fun h ↦ hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 h)))
         exact this)).pow_right
     obtain ⟨a, b, hab⟩ := hcop
     have hu : u = a • (n • u) := by
@@ -387,9 +387,9 @@ lemma ulmHeight_zsmul [Fact p.Prime] (hprim : IsPrimaryPGroup p G)
     ulmHeight p (n • u) = ulmHeight p u := by
   apply le_antisymm
   · exact ulmHeight_le_of_mem_imp p _ _
-      (fun γ h => (mem_ulmSubgroup_zsmul_iff p hprim hn u γ).mp h)
+      (fun γ h ↦ (mem_ulmSubgroup_zsmul_iff p hprim hn u γ).mp h)
   · exact ulmHeight_le_of_mem_imp p _ _
-      (fun γ h => (mem_ulmSubgroup_zsmul_iff p hprim hn u γ).mpr h)
+      (fun γ h ↦ (mem_ulmSubgroup_zsmul_iff p hprim hn u γ).mpr h)
 
 /-- For an element `g` of the `p`-socle (`p • g = 0`), membership of `n • g` in a
 Ulm subgroup is equivalent to membership of `g`, provided `p ∤ n`.
@@ -404,7 +404,7 @@ lemma mem_ulmSubgroup_zsmul_iff_of_pSocle [Fact p.Prime] {g : G}
       show n.natAbs.gcd p = 1
       rw [Nat.gcd_comm]
       exact (Nat.Prime.coprime_iff_not_dvd Fact.out).2
-        (fun h => hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 h)))
+        (fun h ↦ hn (Int.dvd_natAbs.1 (Int.natCast_dvd_natCast.2 h)))
     -- Bezout: n * gcdA + p * gcdB = 1
     have hbez := Int.gcd_eq_gcd_ab n (p : ℤ)
     rw [show (Int.gcd n (p : ℤ) : ℤ) = 1 from by exact_mod_cast hgcd] at hbez
@@ -420,7 +420,7 @@ lemma mem_ulmSubgroup_zsmul_iff_of_pSocle [Fact p.Prime] {g : G}
         _ = Int.gcdA n ↑p • (n • g) := by simp
     rw [hg_eq]
     exact (ulmSubgroup p β (G := G)).zsmul_mem hmem (Int.gcdA n ↑p)
-  · exact fun hmem => (ulmSubgroup p β (G := G)).zsmul_mem hmem n
+  · exact fun hmem ↦ (ulmSubgroup p β (G := G)).zsmul_mem hmem n
 
 lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p A)
     (φ : G →+ H) (hφ : IsHeightPreserving p φ) :
@@ -436,7 +436,7 @@ lemma IsPure.map_of_heightPres [Fact p.Prime] {A : AddSubgroup G} (hA : IsPure p
   rcases hA n ⟨a, haA⟩ ha_pow with ⟨b, hb⟩
   refine ⟨⟨φ b, ⟨b, b.property, rfl⟩⟩, ?_⟩
   ext
-  have hb' : p ^ n • (b : G) = a := congrArg (fun z : A => (z : G)) hb
+  have hb' : p ^ n • (b : G) = a := congrArg (fun z : A ↦ (z : G)) hb
   exact (by
     simpa [map_nsmul] using (congrArg φ hb').trans hax)
 

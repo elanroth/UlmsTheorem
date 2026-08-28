@@ -177,4 +177,4 @@ theorem ulmInvariant_iso_invariant {G H : Type u} [AddCommGroup G] [AddCommGroup
     intro c x
     obtain ⟨n, rfl⟩ := ZMod.natCast_zmod_surjective c
     simpa only [Nat.cast_smul_eq_nsmul] using e.toAddMonoidHom.map_nsmul x n
-  exact rank_eq_of_equiv_equiv (fun c : ZMod p => c) e (by simp) hlin
+  exact rank_eq_of_equiv_equiv (fun c : ZMod p ↦ c) e (by simp) hlin

@@ -40,7 +40,7 @@ lemma pPow_succ_le (n : ℕ) : pPow p (n + 1) ≤ pPow p (G := G) n := by
   intro x ⟨y, hy⟩
   exact ⟨p • y, by rw [← hy, pow_succ, mul_smul]⟩
 
-lemma pPow_antitone : Antitone (fun n => pPow p n (G := G)) :=
+lemma pPow_antitone : Antitone (fun n ↦ pPow p n (G := G)) :=
   antitone_nat_of_succ_le (pPow_succ_le p)
 
 lemma pPow_succ_eq (n : ℕ) :

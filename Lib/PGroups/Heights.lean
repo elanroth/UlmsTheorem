@@ -53,8 +53,8 @@ lemma isPSeparable_iff_iInf :
   · intro hred
     ext x
     simp only [AddSubgroup.mem_iInf, AddSubgroup.mem_bot]
-    exact ⟨fun h => hred x (fun n => (pPow_mem_iff p x n).mp (h n)),
-      fun h n => h ▸ (pPow p (G := G) n).zero_mem⟩
+    exact ⟨fun h ↦ hred x (fun n ↦ (pPow_mem_iff p x n).mp (h n)),
+      fun h n ↦ h ▸ (pPow p (G := G) n).zero_mem⟩
   · intro h x hx
     have hmem : x ∈ ⨅ n : ℕ, pPow p (G := G) n := by
       simp only [AddSubgroup.mem_iInf]
@@ -96,7 +96,7 @@ lemma pHeight_ge_iff (x : G) (n : ℕ) :
       exact ↑(n - 1)
       · exact ⟨_, ⟨0, ⟨x, by simp +decide⟩, rfl⟩⟩
       · rintro _ ⟨m, ⟨y, hy⟩, rfl⟩
-        exact WithTop.coe_le_coe.mpr (Nat.le_sub_one_of_lt (lt_of_not_ge fun hnm =>
+        exact WithTop.coe_le_coe.mpr (Nat.le_sub_one_of_lt (lt_of_not_ge fun hnm ↦
           h (p ^ (m - n) • y) <| by rw [← mul_smul, ← pow_add, Nat.add_sub_of_le hnm, hy]))
       · rcases n with (_ | n) <;> simp_all +decide
         exact WithTop.coe_lt_coe.mpr (Nat.lt_succ_self _)
@@ -133,8 +133,8 @@ lemma pHeight_add_ge_min (x y : G) :
         · exact ⟨n' + 1, le_top, WithTop.coe_lt_coe.mpr (Nat.lt_succ_self _)⟩
       · aesop
     exact ⟨n, by simpa using (pHeight_ge_iff p y n).1 hn₁,
-      fun z hz => (not_le.mpr hn₂) ((pHeight_ge_iff p (x + y) n).2 ⟨z, hz⟩)⟩
-  · have h_subadd : ∀ n : ℕ, (n : ℕ∞) ≤ pHeight p x → (n : ℕ∞) ≤ pHeight p (x + y) := fun n hn =>
+      fun z hz ↦ (not_le.mpr hn₂) ((pHeight_ge_iff p (x + y) n).2 ⟨z, hz⟩)⟩
+  · have h_subadd : ∀ n : ℕ, (n : ℕ∞) ≤ pHeight p x → (n : ℕ∞) ≤ pHeight p (x + y) := fun n hn ↦
       pHeight_add_ge p x y n hn (le_trans hn (le_of_not_ge hxy))
     cases h : pHeight p x <;> aesop
 
@@ -150,7 +150,7 @@ lemma pHeight_add_eq_min_of_ne (x y : G) (h : pHeight p x ≠ pHeight p y) :
       WithTop.ne_top_iff_exists.mp (ne_top_of_lt hx_lt_hy)
     have hk_lt_y  : (k : ℕ∞) < pHeight p y       := by rw [hk]; exact hx_lt_hy
     have hk_lt_xy : (k : ℕ∞) < pHeight p (x + y) := by rw [hk]; exact hlt
-    have succ_le : ∀ a : ℕ∞, (k : ℕ∞) < a → (↑(k + 1) : ℕ∞) ≤ a := fun a ha => by
+    have succ_le : ∀ a : ℕ∞, (k : ℕ∞) < a → (↑(k + 1) : ℕ∞) ≤ a := fun a ha ↦ by
       rcases a with (_ | m)
       · exact le_top
       · exact WithTop.coe_le_coe.mpr (Nat.succ_le_of_lt (WithTop.coe_lt_coe.mp ha))

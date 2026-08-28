@@ -49,7 +49,7 @@ instance : Fact (Nat.Prime 2) := ⟨Nat.prime_two⟩
 section Witnesses
 
 private lemma reduced_44 : IsReducedPGroup 2 (ZMod 4 × ZMod 4) where
-  primary := fun x => ⟨2, by revert x; decide⟩
+  primary := fun x ↦ ⟨2, by revert x; decide⟩
   reduced := by
     refine ⟨((2 : ℕ) : Ordinal), ?_⟩
     rw [ulmSubgroup_nat]
@@ -61,7 +61,7 @@ private lemma reduced_44 : IsReducedPGroup 2 (ZMod 4 × ZMod 4) where
     · rintro rfl; exact ⟨0, by decide⟩
 
 private lemma reduced_28 : IsReducedPGroup 2 (ZMod 2 × ZMod 8) where
-  primary := fun x => ⟨3, by revert x; decide⟩
+  primary := fun x ↦ ⟨3, by revert x; decide⟩
   reduced := by
     refine ⟨((3 : ℕ) : Ordinal), ?_⟩
     rw [ulmSubgroup_nat]
