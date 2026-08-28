@@ -216,7 +216,8 @@ noncomputable def kaplanskyPreMap
           ulmSubgroup p (Order.succ α) :=
       (ulmSubgroup p (Order.succ α)).sub_mem
         ((ulmSubgroup p (Order.succ α)).add_mem hx hy) hxy
-    convert hmem using 1 <;> abel
+    convert hmem using 1
+    abel
 
 /-- Kaplansky's canonical linear map `S_α*/S_(α+1) → P_α/P_(α+1)`. -/
 noncomputable def kaplanskyMap
@@ -245,7 +246,7 @@ theorem kaplanskyMap_injective
   intro a
   constructor
   · intro ha
-    simp only [kaplanskyMap, QuotientAddGroup.lift_mk] at ha
+    simp only [kaplanskyMap] at ha
     have hrep : (kaplanskySocleRep p S α a : G) ∈
         pSocleAt p (Order.succ α) (G := G) := by
       exact (Submodule.Quotient.mk_eq_zero _).1 ha
@@ -328,7 +329,8 @@ theorem kaplanskyMap_range
     change (s - kaplanskyCorrection p S α a) - (v : G) ∈
       ulmSubgroup p (Order.succ α)
     rw [← hsg]
-    convert hsum using 1 <;> abel
+    convert hsum using 1
+    abel
 
 /-- The relative Ulm quotient is nontrivial exactly when there is a proper
 order-`p` representative of exact height `α`. -/
@@ -576,9 +578,7 @@ lemma kaplanskyStarEquiv_map_stageAtSucc
     apply (s.hφ_succ ⟨(x : G), x.property.1⟩).mpr
     have heq :
         (s.e ⟨(x : G), x.property.1⟩ : H) = (y : H) := by
-      simpa [x, kaplanskyStarEquiv] using
-        congrArg Subtype.val
-          ((kaplanskyStarEquiv p s).apply_symm_apply y)
+      simp [x, kaplanskyStarEquiv]
     change
       (s.e ⟨(x : G), x.property.1⟩ : H) ∈
         ulmSubgroup p (Order.succ α)
@@ -859,7 +859,7 @@ lemma socle_extend_build_map
       χ z = (φ z.1 : H) + ((p : ℤ) * k) • h := by
         simp [χ, hk]
       _ = (φ z.1 : H) + k • (p • h) := by
-        simp [mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc]
+        simp [mul_zsmul, Int.mul_comm]
       _ = (φ z.1 : H) + k • (φ ⟨p • g, hpg_in⟩ : H) := by rw [hrel]
       _ = (φ (z.1 + k • ⟨p • g, hpg_in⟩) : H) := by
         simp [map_add, map_zsmul]
@@ -875,13 +875,7 @@ lemma socle_extend_build_map
     rw [← hψa]
     have hcomp :
         φ0 (ψ (a, 0)) = χ (a, 0) := by
-      simpa [φ0] using
-        (AddMonoidHom.liftOfRightInverse_comp_apply
-          (f := ψ)
-          (f_inv := Function.surjInv hψ_surj)
-          (hf := Function.rightInverse_surjInv hψ_surj)
-          (g := ⟨χ, hker⟩)
-          (x := (a, 0)))
+      simp [φ0]
     simpa [χ] using hcomp
   ·
     have hψg : ψ (0, 1) = ⟨g, mem_adjoinElem_right (A := A) g⟩ := by
@@ -891,13 +885,7 @@ lemma socle_extend_build_map
     rw [← hψg]
     have hcomp :
         φ0 (ψ (0, 1)) = χ (0, 1) := by
-      simpa [φ0] using
-        (AddMonoidHom.liftOfRightInverse_comp_apply
-          (f := ψ)
-          (f_inv := Function.surjInv hψ_surj)
-          (hf := Function.rightInverse_surjInv hψ_surj)
-          (g := ⟨χ, hker⟩)
-          (x := (0, 1)))
+      simp [φ0]
     simpa [χ] using hcomp
 
 lemma dvd_of_zsmul_mem_of_not_mem
@@ -946,7 +934,7 @@ lemma phi_zsmul_eq_zsmul_h
         = (↑(φ ⟨m • (p • g), by
               simpa [hm, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hk⟩) : H) := by
             congr 2
-            simpa [hm, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc]
+            simp [hm, mul_zsmul, Int.mul_comm]
     _ = m • (↑(φ ⟨p • g, hpg_in⟩) : H) := by
           have hmap :
               φ ⟨m • (p • g), by
@@ -956,7 +944,7 @@ lemma phi_zsmul_eq_zsmul_h
     _ = m • (p • h) := by
           rw [← hh_eq]
     _ = k • h := by
-          simpa [hm, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc]
+          simp [hm, mul_zsmul, Int.mul_comm]
 
 lemma extend_well_defined
     {A : AddSubgroup G} {B : AddSubgroup H}
@@ -1405,7 +1393,7 @@ lemma exists_kaplanskyTarget_caseI
     have hxb := hxProper (a + b)
     simpa [y, add_assoc] using hxb
   have hycoset : y - x ∈ s.A := by
-    simpa [y] using a.prop
+    simp [y]
   have hpyA : p • y ∈ s.A := by
     change p • (x + (a : G)) ∈ s.A
     rw [smul_add]
@@ -1650,7 +1638,7 @@ lemma kaplansky_extend_one
   have hx0 : x ≠ 0 := by
     intro hx
     apply hxA
-    simpa [hx] using hxgA
+    simp [hx]
   have hpxA : p • x ∈ s.A := by
     have hdecomp : p • x = p • g + p • (x - g) := by
       rw [smul_sub]
@@ -1727,4 +1715,4 @@ lemma kaplansky_extend
               t₁.e ⟨a, hAA₁ a.prop⟩ := hext₂ ⟨a, hAA₁ a.prop⟩
           _ = t.e a := hext₁ a
   obtain ⟨n, hn⟩ := hG.primary g
-  exact extend_pow n s (by simpa [hn])
+  exact extend_pow n s (by simp [hn])

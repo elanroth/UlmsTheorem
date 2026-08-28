@@ -145,7 +145,7 @@ lemma pHeight_add_eq_min_of_ne (x y : G) (h : pHeight p x ≠ pHeight p y) :
     exact min_comm _ _
   have hle : pHeight p (x + y) ≤ pHeight p x := by
     by_contra hlt
-    push_neg at hlt
+    push Not at hlt
     obtain ⟨k, hk⟩ : ∃ k : ℕ, (k : ℕ∞) = pHeight p x :=
       WithTop.ne_top_iff_exists.mp (ne_top_of_lt hx_lt_hy)
     have hk_lt_y  : (k : ℕ∞) < pHeight p y       := by rw [hk]; exact hx_lt_hy

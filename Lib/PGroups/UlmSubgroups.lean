@@ -101,8 +101,7 @@ lemma mem_ulmSubgroup_add_nat_iff (α : Ordinal) (n : ℕ) (x : G) :
   | zero =>
       simp
   | succ n ih =>
-      rw [natCast_succ, add_succ]
-      rw [mem_ulmSubgroup_succ_iff]
+      rw [natCast_succ, add_succ, mem_ulmSubgroup_succ_iff]
       constructor
       · rintro ⟨z, hz, rfl⟩
         rcases (ih z).1 hz with ⟨y, hy, rfl⟩

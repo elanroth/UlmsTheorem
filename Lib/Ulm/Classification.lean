@@ -83,6 +83,7 @@ private noncomputable def bf_chain
   | n + 1 => (bf_forth_back p hforth hback
                 (bf_chain hforth hback enumG enumH n) (enumG n) (enumH n)).choose
 
+omit hp in
 /-- Key monotonicity and coverage properties of consecutive chain steps. -/
 private lemma bf_chain_step_props
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -99,6 +100,7 @@ private lemma bf_chain_step_props
   (bf_forth_back p hforth hback
     (bf_chain p hforth hback enumG enumH n) (enumG n) (enumH n)).choose_spec
 
+omit hp in
 /-- The A-subgroups of the chain are monotone. -/
 private lemma bf_chain_A_le
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -117,6 +119,7 @@ private lemma bf_chain_A_le
     · obtain ⟨hle, _, _, _, _⟩ := bf_chain_step_props p hforth hback enumG enumH n
       exact le_trans (ih (Nat.le_of_lt_succ hmn)) hle
 
+omit hp in
 /-- The partial isomorphisms are compatible across chain stages. -/
 private lemma bf_chain_compat
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -135,6 +138,7 @@ private lemma bf_chain_compat
   · obtain ⟨hle, _, _, _, h⟩ := bf_chain_step_props p hforth hback enumG enumH n
     exact h ⟨a, bf_chain_A_le p hforth hback enumG enumH hmn a.2⟩ ▸ ih
 
+omit hp in
 /-- The B-subgroups of the chain are monotone. -/
 private lemma bf_chain_B_le
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -164,6 +168,7 @@ private noncomputable def bf_limit_map
   let props := bf_chain_step_props p hforth hback enumG enumH n
   c (n + 1) |>.e ⟨g, by rw [← (hG_surj g).choose_spec]; exact props.choose_spec.2.1⟩
 
+omit hp in
 /-- The limit map evaluates consistently at any stage that already covers g. -/
 private lemma bf_limit_map_eq_at
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -181,6 +186,7 @@ private lemma bf_limit_map_eq_at
   · convert bf_chain_compat p hforth hback enumG enumH
         (show (hG_surj g).choose + 1 ≤ n from by linarith) _ |>.symm using 1
 
+omit hp in
 /-- The limit map is additive. -/
 private lemma bf_limit_map_add
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -215,6 +221,7 @@ private lemma bf_limit_map_add
       bf_limit_map_eq_at p hforth hback enumG hG_surj enumH (g₁ + g₂) N hg₁g₂]
   exact eN.map_add ⟨g₁, hg₁⟩ ⟨g₂, hg₂⟩ ▸ rfl
 
+omit hp in
 /-- The limit map is injective. -/
 private lemma bf_limit_map_injective
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
@@ -245,6 +252,7 @@ private lemma bf_limit_map_injective
   exact congrArg Subtype.val
     ((bf_chain p hforth hback enumG enumH N).e.injective (Subtype.ext h_eq_N))
 
+omit hp in
 /-- The limit map is surjective. -/
 private lemma bf_limit_map_surjective
     (hforth : ∀ s : BFIsoStep p (G := G) (H := H), ∀ g : G,
