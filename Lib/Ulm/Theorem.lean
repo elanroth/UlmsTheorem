@@ -13,7 +13,8 @@ universe u
 
 variable (p : ℕ) [hp : Fact p.Prime]
 
-/-- Public easy direction of Ulm's theorem: an isomorphism preserves all classical Ulm invariants. -/
+/-- Public easy direction of Ulm's theorem: an isomorphism preserves all
+classical Ulm invariants. -/
 theorem ulm_invariants_of_iso {G H : Type u} [AddCommGroup G] [AddCommGroup H]
     (hiso : Nonempty (G ≃+ H)) :
     ∀ α : Ordinal.{0},

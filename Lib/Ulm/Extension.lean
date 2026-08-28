@@ -699,7 +699,8 @@ lemma extend_by_one_of_mem
   rfl
 
 omit hp in
-/-- Trivial finite-stage extension when the prescribed generator is already in the domain subgroup. -/
+/-- Trivial finite-stage extension when the prescribed generator is already in
+the domain subgroup. -/
 lemma extend_by_one_fg_of_mem
     {A : AddSubgroup G} (hA : IsPure p A) (hAfg : A.FG)
     {B : AddSubgroup H} (hB : IsPure p B) (hBfg : B.FG)
@@ -875,7 +876,8 @@ lemma phi_zsmul_eq_zsmul_h
   calc
     (↑(φ ⟨k • g, hk⟩) : H)
         = (↑(φ ⟨m • (p • g), by
-              simpa [hm, mul_zsmul, Int.mul_comm, Int.mul_left_comm, Int.mul_assoc] using hk⟩) : H) := by
+              simpa [hm, mul_zsmul, Int.mul_comm, Int.mul_left_comm,
+                Int.mul_assoc] using hk⟩) : H) := by
             congr 2
             simp [hm, mul_zsmul, Int.mul_comm]
     _ = m • (↑(φ ⟨p • g, hpg_in⟩) : H) := by

@@ -231,7 +231,8 @@ lemma pOrder_smul_p (x : G) (hx : 0 < pOrder p x) :
               have hxle : pOrder p x ≤ m + 1 := pOrder_le_succ_of_smul_p_le p hle
               rw [hox] at hxle
               exact (not_le_of_gt <| by
-                simpa using (ENat.lt_coe_add_one_iff (m := (m : ℕ∞)) (n := m)).2 le_rfl) hxle |>.elim
+                simpa using
+                  (ENat.lt_coe_add_one_iff (m := (m : ℕ∞)) (n := m)).2 le_rfl) hxle |>.elim
 
 lemma pOrder_pos_of_ne_zero (x : G) (hx : x ≠ 0) :
     0 < pOrder p x := by
