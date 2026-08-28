@@ -320,5 +320,10 @@ longest proof.
 
 **Not deleted, deliberately.** This is a library about to be published: unused-inside-the-repo is
 not the same as unwanted, and `IsPure` / `IsIsotype` look like intended API for a file named
-`Pure.lean`. `clean-removal.md` says ask before removing rather than assume. **This is a question
-for Elan.** Deleting all eleven would take the file from 426 to roughly 300.
+`Pure.lean`. `clean-removal.md` says ask before removing rather than assume.
+
+**Decision (Elan, 2026-08-28): keep all eleven.** They are good statements for this library to
+prove, independent of whether the Ulm proof route happens to consume them. **They are therefore not
+golf targets and must not be flagged again** — a future pass that re-reports them as dead code is
+reopening a settled question. `clean-removal.md`'s "one path, not two" governs *duplicate* paths; it
+does not make a stated theorem dead merely because nothing internal cites it.
