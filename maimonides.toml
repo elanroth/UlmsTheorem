@@ -1,0 +1,20 @@
+# Portable project identity. Machine-local paths live in bindings.toml.
+schema_version = 1
+id = "ulm"
+name = "Ulm's Theorem"
+kind = "owned-research"
+status = "active"
+default_branch = "main"
+
+[repository]
+provider = "github"
+slug = "elanroth/UlmsTheorem"
+
+[[formal.roots]]
+id = "ulm-lean"
+path = "."
+tool = "lean"
+independent_toolchain = true
+
+[commands]
+build = ["lake", "build"]
